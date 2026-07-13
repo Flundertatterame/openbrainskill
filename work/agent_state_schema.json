@@ -11,7 +11,11 @@
     {
       "step": "string",
       "tool": "string",
+      "command": ["string"],
       "status": "pending | running | completed | failed | skipped",
+      "expected_output": "string",
+      "failure_policy": "string",
+      "exit_code": "number | null",
       "output": "string",
       "error": "string"
     }

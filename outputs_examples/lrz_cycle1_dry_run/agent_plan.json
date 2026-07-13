@@ -1,0 +1,96 @@
+{
+  "plan": [
+    {
+      "step": "check_edf",
+      "tool": "edf_to_lsl_stream.py",
+      "command": [
+        "E:\\pythonInstall\\python.exe",
+        "C:\\Users\\linrz\\Desktop\\openbrainskill\\work\\edf_to_lsl_stream.py",
+        "--edf",
+        "C:\\missing\\SC4002E0-PSG.edf",
+        "--dry-run"
+      ],
+      "status": "pending",
+      "expected_output": "stdout contains selected EDF channels, LSL shape, and amplitude summary",
+      "failure_policy": "Stop NeuroSkill route and ask B line to fix PSG path/channel loading.",
+      "exit_code": null,
+      "output": "",
+      "error": ""
+    },
+    {
+      "step": "check_lsl_discovery",
+      "tool": "lsl_resolve_check.py",
+      "command": [
+        "E:\\pythonInstall\\python.exe",
+        "C:\\Users\\linrz\\Desktop\\openbrainskill\\work\\lsl_resolve_check.py",
+        "--seconds",
+        "5.0"
+      ],
+      "status": "pending",
+      "expected_output": "stdout JSON with count and streams",
+      "failure_policy": "If count is 0, keep state but recommend starting EDF->LSL stream and LSL parameter sweep.",
+      "exit_code": null,
+      "output": "",
+      "error": ""
+    },
+    {
+      "step": "check_neuroskill_status",
+      "tool": "neuroskill_client.py",
+      "command": [
+        "E:\\pythonInstall\\python.exe",
+        "C:\\Users\\linrz\\Desktop\\openbrainskill\\work\\neuroskill_client.py",
+        "status",
+        "--port",
+        "18444",
+        "--out",
+        "C:\\Users\\linrz\\Desktop\\openbrainskill\\outputs_examples\\lrz_cycle1_dry_run\\neuroskill_status.json"
+      ],
+      "status": "pending",
+      "expected_output": "C:\\Users\\linrz\\Desktop\\openbrainskill\\outputs_examples\\lrz_cycle1_dry_run\\neuroskill_status.json",
+      "failure_policy": "If daemon is unreachable, record JSON evidence and switch later to mne_baseline fallback.",
+      "exit_code": null,
+      "output": "",
+      "error": ""
+    },
+    {
+      "step": "evaluate",
+      "tool": "evaluate_sleep_staging.py",
+      "command": [
+        "E:\\pythonInstall\\python.exe",
+        "C:\\Users\\linrz\\Desktop\\openbrainskill\\work\\evaluate_sleep_staging.py",
+        "--truth",
+        "C:\\Users\\linrz\\Desktop\\openbrainskill\\outputs_examples\\lrz_cycle1_dry_run\\true_labels.csv",
+        "--pred",
+        "C:\\Users\\linrz\\Desktop\\openbrainskill\\outputs_examples\\lrz_cycle1_dry_run\\pred_labels.csv",
+        "--out",
+        "C:\\Users\\linrz\\Desktop\\openbrainskill\\outputs_examples\\lrz_cycle1_dry_run\\metrics.json"
+      ],
+      "status": "pending",
+      "expected_output": "C:\\Users\\linrz\\Desktop\\openbrainskill\\outputs_examples\\lrz_cycle1_dry_run\\metrics.json",
+      "failure_policy": "Skip until true_labels.csv and pred_labels.csv both exist.",
+      "exit_code": null,
+      "output": "",
+      "error": ""
+    },
+    {
+      "step": "generate_report",
+      "tool": "agent_reporter.py",
+      "command": [
+        "E:\\pythonInstall\\python.exe",
+        "C:\\Users\\linrz\\Desktop\\openbrainskill\\work\\agent_reporter.py",
+        "--metrics",
+        "C:\\Users\\linrz\\Desktop\\openbrainskill\\outputs_examples\\lrz_cycle1_dry_run\\metrics.json",
+        "--state",
+        "C:\\Users\\linrz\\Desktop\\openbrainskill\\outputs_examples\\lrz_cycle1_dry_run\\agent_state.json",
+        "--out",
+        "C:\\Users\\linrz\\Desktop\\openbrainskill\\outputs_examples\\lrz_cycle1_dry_run\\final_report.md"
+      ],
+      "status": "pending",
+      "expected_output": "C:\\Users\\linrz\\Desktop\\openbrainskill\\outputs_examples\\lrz_cycle1_dry_run\\final_report.md",
+      "failure_policy": "Skip until metrics.json and agent_state.json exist.",
+      "exit_code": null,
+      "output": "",
+      "error": ""
+    }
+  ]
+}

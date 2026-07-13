@@ -30,10 +30,10 @@ def parse_csv(value: str) -> list[str]:
 
 
 def load_edf_data(edf_path: Path, requested_channels: list[str], target_sfreq: float) -> tuple[np.ndarray, float, list[str]]:
-    import mne
-
     if not edf_path.exists():
         raise FileNotFoundError(f"EDF file not found: {edf_path}")
+
+    import mne
 
     raw = mne.io.read_raw_edf(str(edf_path), preload=True, verbose=False)
     available = raw.ch_names
