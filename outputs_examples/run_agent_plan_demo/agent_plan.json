@@ -1,0 +1,81 @@
+{
+  "plan": [
+    {
+      "step": "check_edf",
+      "tool": "edf_to_lsl_stream.py",
+      "command": [
+        "C:\\Users\\linrz\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe",
+        "C:\\Users\\linrz\\Documents\\Codex\\2026-07-13\\new-chat\\work\\edf_to_lsl_stream.py",
+        "--edf",
+        "C:\\path\\to\\SC4002E0-PSG.edf",
+        "--dry-run"
+      ],
+      "status": "pending",
+      "output": "",
+      "error": ""
+    },
+    {
+      "step": "check_lsl_discovery",
+      "tool": "lsl_resolve_check.py",
+      "command": [
+        "C:\\Users\\linrz\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe",
+        "C:\\Users\\linrz\\Documents\\Codex\\2026-07-13\\new-chat\\work\\lsl_resolve_check.py",
+        "--seconds",
+        "5.0"
+      ],
+      "status": "pending",
+      "output": "",
+      "error": ""
+    },
+    {
+      "step": "check_neuroskill_status",
+      "tool": "neuroskill_client.py",
+      "command": [
+        "C:\\Users\\linrz\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe",
+        "C:\\Users\\linrz\\Documents\\Codex\\2026-07-13\\new-chat\\work\\neuroskill_client.py",
+        "status",
+        "--port",
+        "18444",
+        "--out",
+        "outputs\\runs\\run_agent_plan_demo\\neuroskill_status.json"
+      ],
+      "status": "pending",
+      "output": "",
+      "error": ""
+    },
+    {
+      "step": "evaluate",
+      "tool": "evaluate_sleep_staging.py",
+      "command": [
+        "C:\\Users\\linrz\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe",
+        "C:\\Users\\linrz\\Documents\\Codex\\2026-07-13\\new-chat\\work\\evaluate_sleep_staging.py",
+        "--truth",
+        "outputs\\runs\\run_agent_plan_demo\\true_labels.csv",
+        "--pred",
+        "outputs\\runs\\run_agent_plan_demo\\pred_labels.csv",
+        "--out",
+        "outputs\\runs\\run_agent_plan_demo\\metrics.json"
+      ],
+      "status": "pending",
+      "output": "",
+      "error": ""
+    },
+    {
+      "step": "generate_report",
+      "tool": "agent_reporter.py",
+      "command": [
+        "C:\\Users\\linrz\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe",
+        "C:\\Users\\linrz\\Documents\\Codex\\2026-07-13\\new-chat\\work\\agent_reporter.py",
+        "--metrics",
+        "outputs\\runs\\run_agent_plan_demo\\metrics.json",
+        "--state",
+        "outputs\\runs\\run_agent_plan_demo\\agent_state.json",
+        "--out",
+        "outputs\\runs\\run_agent_plan_demo\\final_report.md"
+      ],
+      "status": "pending",
+      "output": "",
+      "error": ""
+    }
+  ]
+}

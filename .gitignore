@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments and local secrets
+.venv/
+venv/
+env/
+.env
+.env.*
+
+# Large datasets and model weights
+data/raw/
+data/**/*.edf
+data/**/*.EDF
+models/
+*.pt
+*.pth
+*.onnx
+
+# Runtime outputs
+outputs/runs/
+*.log
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

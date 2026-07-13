@@ -1,0 +1,65 @@
+{
+  "skill_name": "sleep_staging",
+  "version": "0.1.0",
+  "status": "mvp_contract",
+  "purpose": "Convert Sleep-EDF PSG data into a stream or offline feature flow, run sleep staging, evaluate against Hypnogram labels, and generate a report.",
+  "inputs": {
+    "psg_edf": {
+      "type": "file",
+      "required": true,
+      "description": "Sleep-EDF PSG EDF file."
+    },
+    "hypnogram_edf": {
+      "type": "file",
+      "required": false,
+      "description": "Sleep-EDF Hypnogram EDF annotation file, required for evaluation."
+    },
+    "channels": {
+      "type": "array",
+      "default": ["EEG Fpz-Cz", "EEG Pz-Oz"],
+      "description": "EDF channels to stream or analyze."
+    },
+    "stream": {
+      "type": "object",
+      "description": "LSL stream configuration.",
+      "default": {
+        "name": "SleepEDF_LSL",
+        "type": "EEG",
+        "sample_rate": 256,
+        "channel_labels": ["TP9", "AF7", "AF8", "TP10"],
+        "unit": "microvolts"
+      }
+    },
+    "backend": {
+      "type": "string",
+      "enum": ["neuroskill_lsl", "mne_offline_baseline"],
+      "default": "neuroskill_lsl"
+    }
+  },
+  "outputs": {
+    "predicted_epochs": {
+      "type": "file",
+      "description": "Predicted sleep stages with timestamps."
+    },
+    "metrics": {
+      "type": "object",
+      "fields": ["accuracy", "macro_f1", "cohen_kappa", "confusion_matrix"]
+    },
+    "report": {
+      "type": "markdown",
+      "description": "Natural language sleep staging report."
+    }
+  },
+  "stage_codes": {
+    "0": "Wake",
+    "1": "N1",
+    "2": "N2",
+    "3": "N3",
+    "4": "REM"
+  },
+  "risk_policy": {
+    "neuroskill_lsl_blocked_after_days": 4,
+    "fallback_backend": "mne_offline_baseline",
+    "required_evidence": ["commands", "screenshots", "json_outputs", "error_logs"]
+  }
+}

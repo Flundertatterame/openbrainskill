@@ -1,0 +1,38 @@
+{
+  "run_id": "string",
+  "request": "string",
+  "backend": "neuroskill_lsl | mne_baseline",
+  "status": "planned | running | completed | failed | fallback",
+  "inputs": {
+    "psg_edf": "string",
+    "hypnogram_edf": "string"
+  },
+  "plan": [
+    {
+      "step": "string",
+      "tool": "string",
+      "status": "pending | running | completed | failed | skipped",
+      "output": "string",
+      "error": "string"
+    }
+  ],
+  "artifacts": {
+    "agent_plan": "string",
+    "edf_check": "string",
+    "lsl_discover": "string",
+    "neuroskill_status": "string",
+    "neuroskill_sleep": "string",
+    "truth_labels": "string",
+    "pred_labels": "string",
+    "metrics": "string",
+    "final_report": "string"
+  },
+  "diagnosis": [
+    {
+      "level": "info | warning | error",
+      "message": "string",
+      "evidence": "string",
+      "next_action": "string"
+    }
+  ]
+}
