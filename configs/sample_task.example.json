@@ -1,0 +1,8 @@
+{
+  "task": "sleep_staging",
+  "sample_id": "SC4002E0",
+  "backend": "neuroskill_lsl",
+  "need_report": true,
+  "psg": "C:/data/SleepEDF/SC4002E0-PSG.edf",
+  "hypnogram": "C:/data/SleepEDF/SC4002EC-Hypnogram.edf"
+}
