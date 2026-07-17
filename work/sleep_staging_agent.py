@@ -26,6 +26,8 @@ SAMPLE_ID_PATTERN = re.compile(r"\b(SC\d{4}[A-Z]\d?)\b", re.IGNORECASE)
 
 @dataclass
 class ToolSpec:
+    """描述一个可被 Agent 调用的工具，以及这个工具失败时该怎么处理。"""
+
     step: str
     tool: str
     command: list[str]
@@ -35,6 +37,8 @@ class ToolSpec:
 
 @dataclass
 class Step:
+    """记录执行计划中的一个具体步骤，以及这一步运行后的状态和输出。"""
+
     step: str
     tool: str
     command: list[str] = field(default_factory=list)
@@ -50,6 +54,8 @@ class Step:
 
 @dataclass
 class AgentState:
+    """保存一次 Agent 运行的完整状态，包括输入、计划、产物和诊断信息。"""
+
     run_id: str
     request: str
     backend: str
@@ -63,6 +69,8 @@ class AgentState:
     diagnosis: list[dict[str, str]] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
+        """把 AgentState 转成普通 dict，方便写入 agent_state.json。"""
+
         return {
             "run_id": self.run_id,
             "request": self.request,
@@ -79,11 +87,15 @@ class AgentState:
 
 
 def write_json(path: Path, payload: dict[str, Any]) -> None:
+    """把一个字典写成格式化 JSON 文件，并自动创建父目录。"""
+
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
 def read_json(path: Path) -> dict[str, Any]:
+    """读取 JSON 文件；如果文件不存在或 JSON 格式错误，就返回可诊断的空结果。"""
+
     if not path.exists():
         return {}
     try:
@@ -93,6 +105,8 @@ def read_json(path: Path) -> dict[str, Any]:
 
 
 def parse_json_text(text: str) -> dict[str, Any]:
+    """尝试把一段字符串解析成 JSON；解析失败时返回空字典。"""
+
     try:
         return json.loads(text)
     except json.JSONDecodeError:
@@ -100,27 +114,37 @@ def parse_json_text(text: str) -> dict[str, Any]:
 
 
 def run_command(command: list[str], cwd: Path) -> tuple[int, str, str]:
+    """像在终端里一样运行一条命令，并返回退出码、标准输出和错误输出。"""
+
     completed = subprocess.run(command, cwd=str(cwd), text=True, capture_output=True, check=False)
     return completed.returncode, completed.stdout, completed.stderr
 
 
 def summarize_text(text: str, max_lines: int = 8) -> str:
+    """从一大段终端输出中提取前几行有效内容，便于写入状态摘要。"""
+
     lines = [line.strip() for line in text.splitlines() if line.strip()]
     return "\n".join(lines[:max_lines])
 
 
 def extract_sample_id(request: str) -> str:
+    """从自然语言请求中提取 Sleep-EDF 样本编号，例如 SC4002E0。"""
+
     match = SAMPLE_ID_PATTERN.search(request)
     return match.group(1).upper() if match else ""
 
 
 def load_task_json(path: str) -> dict[str, Any]:
+    """读取结构化任务 JSON；没有提供路径时返回空字典。"""
+
     if not path:
         return {}
     return read_json(Path(path))
 
 
 def build_structured_task(args: argparse.Namespace) -> dict[str, Any]:
+    """把命令行参数或 task-json 统一整理成 Agent 内部使用的结构化任务。"""
+
     task = load_task_json(args.task_json)
     if task:
         return {
@@ -143,6 +167,8 @@ def build_structured_task(args: argparse.Namespace) -> dict[str, Any]:
 
 
 def get_stream_count(payload: dict[str, Any]) -> int | None:
+    """从 LSL discover 的不同返回格式中尽量提取发现到的流数量。"""
+
     if isinstance(payload.get("count"), int):
         return payload["count"]
     streams = payload.get("streams")
@@ -163,6 +189,8 @@ def get_stream_count(payload: dict[str, Any]) -> int | None:
 
 
 def build_tool_registry(args: argparse.Namespace, artifacts: dict[str, str]) -> dict[str, ToolSpec]:
+    """建立工具注册表：告诉 Agent 每个步骤要调用哪个脚本和输出到哪里。"""
+
     python = sys.executable
 
     return {
@@ -257,6 +285,8 @@ def build_tool_registry(args: argparse.Namespace, artifacts: dict[str, str]) -> 
 
 
 def step_from_spec(spec: ToolSpec) -> Step:
+    """把工具说明 ToolSpec 转成一次计划中真正要执行的 Step。"""
+
     return Step(
         step=spec.step,
         tool=spec.tool,
@@ -268,6 +298,8 @@ def step_from_spec(spec: ToolSpec) -> Step:
 
 
 def build_plan(args: argparse.Namespace, run_dir: Path) -> AgentState:
+    """根据用户请求、输入路径和 backend 生成完整执行计划与输出文件路径。"""
+
     run_id = run_dir.name
     artifacts = {
         "agent_plan": str(run_dir / "agent_plan.json"),
@@ -309,6 +341,8 @@ def build_plan(args: argparse.Namespace, run_dir: Path) -> AgentState:
 
 
 def add_diagnosis(state: AgentState, level: str, message: str, evidence: str, next_action: str) -> None:
+    """向 Agent 状态中追加一条诊断信息，并同步更新下一步建议。"""
+
     item = {
         "level": level,
         "message": message,
@@ -321,12 +355,16 @@ def add_diagnosis(state: AgentState, level: str, message: str, evidence: str, ne
 
 
 def switch_to_fallback(state: AgentState, reason: str, evidence: str, next_action: str) -> None:
+    """当 NeuroSkill/LSL 主路线不可用时，把有效后端切换到 mne_baseline。"""
+
     state.backend_effective = "mne_baseline"
     state.status = "fallback"
     add_diagnosis(state, "warning", reason, evidence, next_action)
 
 
 def write_step_artifact(state: AgentState, step: Step) -> None:
+    """把某些关键步骤的执行结果保存成独立 JSON，方便之后复查。"""
+
     payload = {
         "ok": step.status == "completed",
         "step": step.step,
@@ -346,6 +384,8 @@ def write_step_artifact(state: AgentState, step: Step) -> None:
 
 
 def add_preflight_diagnostics(state: AgentState) -> None:
+    """在真正执行前先检查输入文件路径，并把明显问题写入 diagnosis。"""
+
     psg = Path(state.inputs.get("psg_edf", ""))
     hypnogram_value = state.inputs.get("hypnogram_edf", "")
 
@@ -369,6 +409,8 @@ def add_preflight_diagnostics(state: AgentState) -> None:
 
 
 def inspect_step_result(state: AgentState, step: Step) -> None:
+    """根据某一步的输出结果判断是否需要追加诊断或触发 fallback。"""
+
     if step.step == "check_lsl_discovery" and step.status == "completed":
         payload = parse_json_text(step.output)
         if payload.get("count") == 0:
@@ -424,6 +466,8 @@ def inspect_step_result(state: AgentState, step: Step) -> None:
 
 
 def execute_plan(state: AgentState, run_dir: Path, execute: bool) -> AgentState:
+    """按顺序执行计划中的步骤；如果是 dry-run，则只写计划不运行工具。"""
+
     state.status = "running" if execute else "planned"
     add_preflight_diagnostics(state)
 
@@ -494,6 +538,8 @@ def execute_plan(state: AgentState, run_dir: Path, execute: bool) -> AgentState:
 
 
 def diagnose_next_action(step: str) -> str:
+    """根据失败的步骤名称，返回一条适合初学者继续排查的建议。"""
+
     mapping = {
         "check_edf": "Check EDF path, channel names, and whether MNE can read the file.",
         "check_lsl_discovery": "Run the LSL stream script first, then repeat discovery. Check firewall if still empty.",
@@ -506,6 +552,8 @@ def diagnose_next_action(step: str) -> str:
 
 
 def main() -> None:
+    """命令行入口：解析参数、创建 run 目录、生成计划、执行并输出状态 JSON。"""
+
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
 
