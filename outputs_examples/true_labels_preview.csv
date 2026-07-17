@@ -1,0 +1,21 @@
+onset,duration,stage,label
+0.0,30630.0,Sleep stage W,0
+30630.0,120.0,Sleep stage 1,1
+30750.0,390.0,Sleep stage 2,2
+31140.0,30.0,Sleep stage 3,3
+31170.0,30.0,Sleep stage 2,2
+31200.0,150.0,Sleep stage 3,3
+31350.0,30.0,Sleep stage 4,3
+31380.0,60.0,Sleep stage 3,3
+31440.0,60.0,Sleep stage 4,3
+31500.0,30.0,Sleep stage 3,3
+31530.0,120.0,Sleep stage 4,3
+31650.0,30.0,Sleep stage 3,3
+31680.0,120.0,Sleep stage 4,3
+31800.0,30.0,Sleep stage W,0
+31830.0,60.0,Sleep stage 3,3
+31890.0,60.0,Sleep stage 2,2
+31950.0,120.0,Sleep stage 3,3
+32070.0,30.0,Sleep stage 4,3
+32100.0,30.0,Sleep stage 3,3
+32130.0,120.0,Sleep stage 4,3
