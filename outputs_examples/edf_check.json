@@ -1,0 +1,8 @@
+{
+    "exists": false,
+    "channels": 0,
+    "sfreq": 0,
+    "duration_sec": 0,
+    "eeg_channels": [],
+    "error": "module 'mne' has no attribute 'io'"
+}
