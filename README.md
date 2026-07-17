@@ -16,10 +16,10 @@ Sleep-EDF 数据
 
 ```text
 A 线：Agent / LLM / OpenBrainSkill 封装
-  林容增 + 张瑞涵
+
 
 B 线：NeuroSkill 调度 / EDF-LSL / 数据接入
-  郑博文 + 沈博昊 + 张驰
+
 ```
 
 ## 目录
