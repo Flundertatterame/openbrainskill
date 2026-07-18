@@ -1,0 +1,7 @@
+{
+    "source_file": "E:\\openbrainskill/outputs_examples/true_labels.csv",
+    "start_sec": 0,
+    "end_sec": 600,
+    "duration_sec": 600,
+    "epochs": 20
+}
