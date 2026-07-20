@@ -73,6 +73,38 @@ def render_confusion_matrix(metrics: dict[str, Any]) -> list[str]:
         lines.append(f"| {STAGE_NAMES[stage]} | " + " | ".join(values) + " |")
     return lines
 
+def build_llm_prompt(metrics: dict[str, Any], state: dict[str, Any]) -> str:
+    prompt = """# 睡眠分期报告生成指令
+
+## 角色定位
+你是睡眠分期结果报告生成助手，仅基于提供的结构化数据生成自然语言说明，不做算法判断、不补充医学知识、不编造数据。
+
+## 可用输入（仅此三类，禁止使用任何外部知识）
+1. metrics.json：分期评估指标
+2. agent_state.json：Agent执行状态、步骤、诊断信息
+3. neuroskill_sleep.json：NeuroSkill原始分期输出（若缺失则忽略）
+
+## 硬性禁止规则
+1. 禁止编造数据中未出现的指标、数值、结论
+2. 禁止使用「优秀」「良好」「理想」「较差」等主观评价词汇
+3. 禁止补充数据中没有的医学解释或健康建议
+4. 数据缺失的字段必须明确标注「missing」
+
+## 报告固定结构
+1. 任务执行概览
+2. 分期评估指标表格
+3. 指标含义客观说明
+4. 失败原因与下一步动作（有诊断信息时出现）
+5. 引用文件清单
+
+---
+以下是本次运行的真实数据：
+"""
+    prompt += "\n### metrics.json\n"
+    prompt += "```json\n" + json.dumps(metrics, ensure_ascii=False, indent=2) + "\n```\n"
+    prompt += "\n### agent_state.json\n"
+    prompt += "```json\n" + json.dumps(state, ensure_ascii=False, indent=2) + "\n```\n"
+    return prompt
 
 def build_report(metrics: dict[str, Any], state: dict[str, Any]) -> str:
     lines: list[str] = []
@@ -124,10 +156,17 @@ def main() -> None:
     parser.add_argument("--metrics", required=True, help="Path to metrics.json.")
     parser.add_argument("--state", help="Path to agent_state.json.")
     parser.add_argument("--out", required=True, help="Output Markdown path.")
+    parser.add_argument("--llm-prompt-out", help="Output LLM prompt text file path.")
     args = parser.parse_args()
 
     metrics = load_json(Path(args.metrics))
     state = load_json(Path(args.state)) if args.state else {}
+    if args.llm_prompt_out:
+        prompt = build_llm_prompt(metrics, state)
+        prompt_path = Path(args.llm_prompt_out)
+        prompt_path.parent.mkdir(parents=True, exist_ok=True)
+        prompt_path.write_text(prompt, encoding="utf-8")
+        print(f"LLM prompt written to: {prompt_path}")
     report = build_report(metrics, state)
 
     out = Path(args.out)
