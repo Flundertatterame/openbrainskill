@@ -16,6 +16,7 @@ channels to reach the requested LSL channel count.
 from __future__ import annotations
 
 import argparse
+import json
 import time
 from pathlib import Path
 
@@ -140,6 +141,7 @@ def main() -> None:
     parser.add_argument("--chunk-seconds", type=float, default=0.125, help="Chunk size in seconds.")
     parser.add_argument("--push-mode", choices=["sample", "chunk"], default="sample", help="Push samples one-by-one or in chunks.")
     parser.add_argument("--dry-run", action="store_true", help="Load and summarize EDF without starting LSL.")
+    parser.add_argument("--metadata-json-out", default="", help="Write stream metadata JSON before pushing.")
     args = parser.parse_args()
 
     labels = parse_csv(args.lsl_labels) or DEFAULT_LABELS
@@ -150,6 +152,27 @@ def main() -> None:
     print(f"EDF channels selected: {selected}")
     print(f"Data shape for LSL: channels={data.shape[0]}, samples={data.shape[1]}")
     print(f"Amplitude median abs: {float(np.nanmedian(np.abs(data))):.3f} microvolts")
+
+    if args.metadata_json_out:
+        metadata = {
+            "name": args.stream_name,
+            "type": args.stream_type,
+            "channel_count": len(labels),
+            "nominal_srate": sfreq,
+            "channel_format": "cf_float32",
+            "source_id": args.source_id,
+            "labels": labels,
+            "edf_channels_selected": selected,
+            "unit": "microvolts",
+            "data_shape": [data.shape[0], data.shape[1]],
+            "push_mode": args.push_mode,
+            "minutes": args.minutes,
+            "chunk_seconds": args.chunk_seconds,
+        }
+        out_path = Path(args.metadata_json_out)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(json.dumps(metadata, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        print(f"Metadata written to: {out_path}")
 
     if args.dry_run:
         return
