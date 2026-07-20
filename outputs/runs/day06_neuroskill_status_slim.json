@@ -1,0 +1,15 @@
+{
+  "schema_version": "1.0",
+  "command": "status",
+  "timestamp": "2026-07-19T21:40:43+08:00",
+  "ok": false,
+  "state": null,
+  "eeg_samples": null,
+  "session": null,
+  "discovered_devices": null,
+  "source": "http://127.0.0.1:18444/",
+  "error": {
+    "type": "timeout",
+    "message": "timed out"
+  }
+}
