@@ -1,49 +1,122 @@
 import argparse
 import pandas as pd
+import mne
+
 
 # -------------------------------
-# 接收命令行参数
+# 参数
 # -------------------------------
 
 parser = argparse.ArgumentParser(
-    description="提取Sleep-EDF标签"
+    description="Extract Sleep-EDF Hypnogram labels to CSV"
 )
 
 parser.add_argument(
     "--hypnogram",
-    type=str,
     required=True,
-    help="Hypnogram文件路径"
+    help="Hypnogram EDF path"
 )
 
 parser.add_argument(
     "--out",
-    type=str,
     required=True,
-    help="CSV输出路径"
+    help="Output CSV path"
 )
 
 args = parser.parse_args()
 
-print("========== Day1 ==========")
-print("Hypnogram文件：", args.hypnogram)
-print("输出CSV：", args.out)
+
+print("========== Extract Hypnogram ==========")
+print("Hypnogram:", args.hypnogram)
+print("Output:", args.out)
+
 
 # -------------------------------
-# 创建空CSV（Day1任务）
+# 读取 Hypnogram annotation
 # -------------------------------
 
-df = pd.DataFrame(
-    columns=[
-        "start_sec",
-        "stage",
-        "stage_name"
-    ]
+annotations = mne.read_annotations(
+    args.hypnogram
 )
+
+
+# -------------------------------
+# Sleep stage mapping
+# -------------------------------
+
+stage_map = {
+    "Sleep stage W": 0,
+    "Sleep stage 1": 1,
+    "Sleep stage 2": 2,
+    "Sleep stage 3": 3,
+    "Sleep stage 4": 3,
+    "Sleep stage R": 4,
+}
+
+
+# -------------------------------
+# 展开为30秒 epoch
+# -------------------------------
+
+rows = []
+
+
+for onset, duration, desc in zip(
+    annotations.onset,
+    annotations.duration,
+    annotations.description,
+):
+
+    if desc not in stage_map:
+        continue
+
+
+    stage = stage_map[desc]
+
+
+    # 一个annotation可能120秒、300秒
+    # 必须拆成30秒epoch
+
+    n_epoch = int(duration // 30)
+
+
+    for i in range(n_epoch):
+
+        rows.append(
+            {
+                "start_sec": int(onset + i * 30),
+                "stage": stage,
+                "stage_name": desc,
+            }
+        )
+
+
+# -------------------------------
+# 保存
+# -------------------------------
+
+df = pd.DataFrame(rows)
+
 
 df.to_csv(
     args.out,
     index=False
 )
 
-print("CSV文件生成成功！")
+
+# -------------------------------
+# 输出检查
+# -------------------------------
+
+print("\n前20行:")
+print(df.head(20))
+
+
+print(
+    f"\n共生成 {len(df)} 个30秒epoch"
+)
+
+print(
+    "输出文件:",
+    args.out
+)
