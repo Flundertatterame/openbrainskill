@@ -45,10 +45,8 @@ def explain_metrics(metrics: dict[str, Any]) -> list[str]:
     lines.append(f"- Cohen's Kappa: {fmt_float(kappa)}")
 
     if isinstance(acc, (float, int)) and isinstance(macro_f1, (float, int)):
-        if acc - macro_f1 > 0.15:
-            lines.append("- Accuracy 明显高于 Macro-F1，说明类别不均衡或某些阶段识别较弱，不能只看 Accuracy。")
-        else:
-            lines.append("- Accuracy 与 Macro-F1 差距不大，说明各类别表现相对均衡。")
+        diff = abs(acc - macro_f1)
+        lines.append(f"- Accuracy 与 Macro-F1 差值为 {diff:.4f}")
 
     if isinstance(kappa, (float, int)):
         if kappa < 0.4:
@@ -73,7 +71,7 @@ def render_confusion_matrix(metrics: dict[str, Any]) -> list[str]:
         lines.append(f"| {STAGE_NAMES[stage]} | " + " | ".join(values) + " |")
     return lines
 
-def build_llm_prompt(metrics: dict[str, Any], state: dict[str, Any]) -> str:
+def build_llm_prompt(metrics: dict[str, Any], state: dict[str, Any], neuroskill: dict[str, Any] = {}) -> str:
     prompt = """# 睡眠分期报告生成指令
 
 ## 角色定位
@@ -104,6 +102,11 @@ def build_llm_prompt(metrics: dict[str, Any], state: dict[str, Any]) -> str:
     prompt += "```json\n" + json.dumps(metrics, ensure_ascii=False, indent=2) + "\n```\n"
     prompt += "\n### agent_state.json\n"
     prompt += "```json\n" + json.dumps(state, ensure_ascii=False, indent=2) + "\n```\n"
+        prompt += "\n### neuroskill_sleep.json\n"
+    if neuroskill:
+        prompt += "```json\n" + json.dumps(neuroskill, ensure_ascii=False, indent=2) + "\n```\n"
+    else:
+        prompt += "missing（本次运行未提供）\n"
     return prompt
 
 def build_report(metrics: dict[str, Any], state: dict[str, Any]) -> str:
@@ -144,7 +147,13 @@ def build_report(metrics: dict[str, Any], state: dict[str, Any]) -> str:
                 if next_action:
                     lines.append(f"  Next action: {next_action}")
         lines.append("")
-
+        
+    lines.append("## Referenced Files")
+    lines.append("")
+    lines.append("- metrics.json：分期评估指标数据")
+    lines.append("- agent_state.json：Agent 执行状态与诊断信息")
+    lines.append("- neuroskill_sleep.json：预留输入，未提供时为 missing")
+    lines.append("")
     lines.append("## Interpretation")
     lines.append("")
     lines.append("本报告只基于脚本输出的真实 JSON/CSV 结果生成。LLM 可以用于润色表达，但不能新增未出现在结果文件中的指标或结论。")
@@ -156,13 +165,15 @@ def main() -> None:
     parser.add_argument("--metrics", required=True, help="Path to metrics.json.")
     parser.add_argument("--state", help="Path to agent_state.json.")
     parser.add_argument("--out", required=True, help="Output Markdown path.")
+    parser.add_argument("--neuroskill", help="Path to neuroskill_sleep.json (optional)")
     parser.add_argument("--llm-prompt-out", help="Output LLM prompt text file path.")
     args = parser.parse_args()
 
     metrics = load_json(Path(args.metrics))
     state = load_json(Path(args.state)) if args.state else {}
+    neuroskill = load_json(Path(args.neuroskill)) if args.neuroskill else {}
     if args.llm_prompt_out:
-        prompt = build_llm_prompt(metrics, state)
+        prompt = build_llm_prompt(metrics, state, neuroskill)
         prompt_path = Path(args.llm_prompt_out)
         prompt_path.parent.mkdir(parents=True, exist_ok=True)
         prompt_path.write_text(prompt, encoding="utf-8")
