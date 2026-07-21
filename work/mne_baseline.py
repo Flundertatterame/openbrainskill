@@ -1,6 +1,8 @@
 """
 MNE baseline sleep staging
 
+Day10:
+
 Input:
     PSG EDF
     true_labels.csv
@@ -10,135 +12,367 @@ Output:
 
 Interface:
 
-python work/mne_baseline.py \
-    --psg SC4002E0-PSG.edf \
-    --truth true_labels.csv \
-    --out pred_labels.csv
+python work\mne_baseline.py
+--psg PSG.edf
+--truth true_labels.csv
+--out pred_labels.csv
 
 
-Output format:
+Method:
 
-start_sec,stage
+30s epoch
++
+frequency band power
 
-Example:
+Rule:
 
-0,0
-30,0
-60,0
+delta high:
+    N3
 
-Current:
-    baseline placeholder
-    all predictions = stage 0
+alpha/beta high:
+    Wake
+
+otherwise:
+    N2
 """
+
 
 import argparse
 import os
+import numpy as np
 import pandas as pd
 import mne
 
+from scipy.signal import welch
 
 
-# =========================
-# Read PSG EDF
-# =========================
 
-def read_psg(psg_path):
+# ==========================
+# Frequency bands
+# ==========================
+
+BANDS = {
+
+    "delta": (0.5,4),
+
+    "theta": (4,8),
+
+    "alpha": (8,13),
+
+    "beta": (13,30)
+
+}
+
+
+
+# ==========================
+# Read PSG
+# ==========================
+
+def read_psg(path):
+
+    if not os.path.exists(path):
+
+        raise FileNotFoundError(
+            f"PSG not found: {path}"
+        )
+
 
     print("Reading PSG:")
-    print(psg_path)
+    print(path)
+
 
     raw = mne.io.read_raw_edf(
-        psg_path,
-        preload=False
+        path,
+        preload=True
     )
 
-    print("Channels:", len(raw.ch_names))
+
+    print(
+        "Channels:",
+        len(raw.ch_names)
+    )
+
+
     print(
         "Sampling frequency:",
         raw.info["sfreq"]
     )
 
+
     return raw
 
 
 
-# =========================
-# Read true_labels.csv
-# =========================
+# ==========================
+# Select EEG channel
+# ==========================
 
-def read_truth(truth_path):
+def select_eeg(raw):
 
-    print("\nReading truth:")
-    print(truth_path)
 
-    truth = pd.read_csv(
-        truth_path
+    picks = mne.pick_types(
+        raw.info,
+        eeg=True
     )
 
 
-    required_columns = [
-        "start_sec",
-        "stage"
+    if len(picks)==0:
+
+        raise RuntimeError(
+            "No EEG channel found"
+        )
+
+
+    print(
+        "Using EEG:",
+        raw.ch_names[picks[0]]
+    )
+
+
+    return picks[0]
+
+
+
+# ==========================
+# Calculate relative power
+# ==========================
+
+def band_power(
+        data,
+        sfreq
+):
+
+
+    freqs, psd = welch(
+        data,
+        fs=sfreq,
+        nperseg=int(sfreq*2)
+    )
+
+
+    total_power=np.sum(psd)
+
+
+    result={}
+
+
+    for name,(low,high) in BANDS.items():
+
+
+        idx=(
+
+            (freqs>=low)
+
+            &
+
+            (freqs<high)
+
+        )
+
+
+        power=np.sum(
+            psd[idx]
+        )
+
+
+        result[name+"_power"]=(
+            power/total_power
+            if total_power>0
+            else 0
+        )
+
+
+    return result
+
+
+
+# ==========================
+# Feature extraction
+# ==========================
+
+def extract_features(
+        raw,
+        channel
+):
+
+
+    sfreq=raw.info["sfreq"]
+
+
+    epoch_samples=int(
+        sfreq*30
+    )
+
+
+    data=raw.get_data(
+        picks=[channel]
+    )[0]
+
+
+    n_epochs=len(data)//epoch_samples
+
+
+    rows=[]
+
+
+    for epoch in range(n_epochs):
+
+
+        start_sec=epoch*30
+
+
+        segment=data[
+            epoch*epoch_samples:
+            (epoch+1)*epoch_samples
+        ]
+
+
+        feature=band_power(
+            segment,
+            sfreq
+        )
+
+
+        rows.append(
+            {
+                "start_sec":start_sec,
+                **feature
+            }
+        )
+
+
+    return pd.DataFrame(rows)
+
+
+
+# ==========================
+# Rule classifier
+# ==========================
+
+def predict_stage(row):
+
+
+    delta=row["delta_power"]
+
+    alpha=row["alpha_power"]
+
+    beta=row["beta_power"]
+
+
+    # N3
+
+    if delta>0.5:
+
+        return 3
+
+
+
+    # Wake
+
+    if alpha+beta>0.4:
+
+        return 0
+
+
+
+    # N2
+
+    return 2
+
+
+
+# ==========================
+# Main
+# ==========================
+
+def main():
+
+
+    parser=argparse.ArgumentParser(
+        description=
+        "MNE baseline sleep staging"
+    )
+
+
+    parser.add_argument(
+        "--psg",
+        required=True
+    )
+
+
+    parser.add_argument(
+        "--truth",
+        required=True
+    )
+
+
+    parser.add_argument(
+        "--out",
+        required=True
+    )
+
+
+    args=parser.parse_args()
+
+
+
+    raw=read_psg(
+        args.psg
+    )
+
+
+    channel=select_eeg(
+        raw
+    )
+
+
+    print(
+        "\nExtracting features..."
+    )
+
+
+    features=extract_features(
+        raw,
+        channel
+    )
+
+
+    print(
+        features.head()
+    )
+
+
+    print(
+        "Epoch number:",
+        len(features)
+    )
+
+
+
+    print(
+        "\nPredicting..."
+    )
+
+
+    features["stage"]=features.apply(
+        predict_stage,
+        axis=1
+    )
+
+
+
+    pred=features[
+        [
+            "start_sec",
+            "stage"
+        ]
     ]
 
 
-    for col in required_columns:
 
-        if col not in truth.columns:
-            raise ValueError(
-                f"Missing column: {col}"
-            )
-
-
-    print("\nPreview:")
-    print(truth.head())
-
-
-    print(
-        "\nEpoch count:",
-        len(truth)
-    )
-
-
-    return truth
-
-
-
-# =========================
-# Create baseline prediction
-# =========================
-
-def create_prediction(
-        truth,
-        output_path
-):
-
-    print(
-        "\nCreating prediction..."
-    )
-
-
-    pred = pd.DataFrame()
-
-
-    # 保留30秒epoch时间点
-
-    pred["start_sec"] = (
-        truth["start_sec"]
-    )
-
-
-    # baseline占位预测
-    # 当前全部预测Wake
-
-    pred["stage"] = 0
-
-
-
-    # 自动创建输出目录
-
-    output_dir = os.path.dirname(
-        output_path
+    output_dir=os.path.dirname(
+        args.out
     )
 
 
@@ -150,87 +384,28 @@ def create_prediction(
         )
 
 
-
     pred.to_csv(
-        output_path,
+        args.out,
         index=False
     )
 
 
     print(
+        "\nPrediction preview:"
+    )
+
+    print(
+        pred.head(10)
+    )
+
+
+    print(
         "\nSaved:",
-        output_path
-    )
-
-
-
-# =========================
-# Main
-# =========================
-
-def main():
-
-
-    parser = argparse.ArgumentParser(
-        description=
-        "MNE baseline sleep staging"
-    )
-
-
-    parser.add_argument(
-        "--psg",
-        required=True,
-        help="PSG EDF path"
-    )
-
-
-    parser.add_argument(
-        "--truth",
-        required=True,
-        help="true_labels.csv path"
-    )
-
-
-    parser.add_argument(
-        "--out",
-        required=True,
-        help="prediction CSV output path"
-    )
-
-
-
-    args = parser.parse_args()
-
-
-
-    # 1.
-    # Load PSG
-
-    read_psg(
-        args.psg
-    )
-
-
-
-    # 2.
-    # Load true labels
-
-    truth = read_truth(
-        args.truth
-    )
-
-
-
-    # 3.
-    # Generate prediction
-
-    create_prediction(
-        truth,
         args.out
     )
 
 
 
-if __name__ == "__main__":
+if __name__=="__main__":
 
     main()
