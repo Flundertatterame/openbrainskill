@@ -67,6 +67,25 @@ SWEEP_CONFIGS: list[dict] = [
 ]
 
 
+def stream_to_dict(stream) -> dict:
+    return {
+        "name": stream.name(),
+        "type": stream.type(),
+        "channel_count": stream.channel_count(),
+        "sample_rate": stream.nominal_srate(),
+        "source_id": stream.source_id(),
+        "hostname": stream.hostname(),
+    }
+
+
+def stream_matches(stream: dict, stream_name: str, expected_channels: int, expected_sample_rate: float) -> bool:
+    return (
+        stream["name"] == stream_name
+        and stream["channel_count"] == expected_channels
+        and abs(float(stream["sample_rate"]) - float(expected_sample_rate)) < 1e-3
+    )
+
+
 def discover_streams(wait_sec: float, stream_type: str | None = None) -> list[dict]:
     """Discover local LSL streams via pylsl, returning structured info."""
     from pylsl import resolve_streams
@@ -78,18 +97,53 @@ def discover_streams(wait_sec: float, stream_type: str | None = None) -> list[di
             if stream_type and stream.type() != stream_type:
                 continue
             key = stream.source_id() or f"{stream.name()}::{stream.hostname()}"
-            found[key] = {
-                "name": stream.name(),
-                "type": stream.type(),
-                "channel_count": stream.channel_count(),
-                "sample_rate": stream.nominal_srate(),
-                "source_id": stream.source_id(),
-                "hostname": stream.hostname(),
-            }
+            found[key] = stream_to_dict(stream)
     return list(found.values())
 
 
-def run_one_sweep(config: dict, edf_path: str, stream_seconds: float, discover_seconds: float, python_exe: str) -> dict:
+def wait_for_stream_start(
+    proc: subprocess.Popen,
+    stream_name: str,
+    expected_channels: int,
+    expected_sample_rate: float,
+    startup_timeout: float,
+    stream_type: str | None = "EEG",
+) -> tuple[list[dict], dict | None, float, str]:
+    """Wait until the target LSL outlet is actually discoverable."""
+    from pylsl import resolve_streams
+
+    deadline = time.time() + startup_timeout
+    found: dict[str, dict] = {}
+    start_time = time.time()
+
+    while time.time() < deadline:
+        if proc.poll() is not None:
+            elapsed = round(time.time() - start_time, 2)
+            return list(found.values()), None, elapsed, f"Stream process exited early (rc={proc.returncode})"
+
+        wait_time = min(1.0, max(0.1, deadline - time.time()))
+        for stream in resolve_streams(wait_time=wait_time):
+            if stream_type and stream.type() != stream_type:
+                continue
+            stream_info = stream_to_dict(stream)
+            key = stream_info["source_id"] or f"{stream_info['name']}::{stream_info['hostname']}"
+            found[key] = stream_info
+            if stream_matches(stream_info, stream_name, expected_channels, expected_sample_rate):
+                elapsed = round(time.time() - start_time, 2)
+                return list(found.values()), stream_info, elapsed, ""
+
+    elapsed = round(time.time() - start_time, 2)
+    return list(found.values()), None, elapsed, f"Timed out after {startup_timeout:.1f}s waiting for stream registration"
+
+
+def run_one_sweep(
+    config: dict,
+    edf_path: str,
+    stream_seconds: float,
+    discover_seconds: float,
+    startup_timeout: float,
+    python_exe: str,
+) -> dict:
     """Start a LSL stream in background, discover it, then kill the stream."""
     label = config["label"]
     stream_name = config["stream_name"]
@@ -117,8 +171,11 @@ def run_one_sweep(config: dict, edf_path: str, stream_seconds: float, discover_s
         "stream_started": False,
         "discover_success": False,
         "stream_count_found": 0,
+        "matching_stream_count": 0,
         "streams_found": [],
         "matched_stream": None,
+        "startup_timeout_sec": startup_timeout,
+        "startup_elapsed_sec": 0.0,
         "error": "",
         "duration_sec": 0.0,
     }
@@ -131,22 +188,46 @@ def run_one_sweep(config: dict, edf_path: str, stream_seconds: float, discover_s
             stderr=subprocess.PIPE,
             text=True,
         )
-        # Allow the stream outlet to start and register with the network.
-        time.sleep(2.0)
 
-        # Check if the process is still alive.
+        startup_streams, matched, startup_elapsed, startup_error = wait_for_stream_start(
+            proc=proc,
+            stream_name=stream_name,
+            expected_channels=int(config["expected_channels"]),
+            expected_sample_rate=float(config["sample_rate"]),
+            startup_timeout=startup_timeout,
+            stream_type="EEG",
+        )
+        result["streams_found"] = startup_streams
+        result["stream_count_found"] = len(startup_streams)
+        result["startup_elapsed_sec"] = startup_elapsed
+
         if proc.poll() is not None:
             stderr_text = proc.stderr.read() if proc.stderr else ""
-            result["error"] = f"Stream process exited early (rc={proc.returncode}): {stderr_text[-500:]}"
+            result["error"] = f"{startup_error}: {stderr_text[-500:]}"
             return result
 
-        result["stream_started"] = True
+        if matched is None:
+            result["error"] = startup_error
+            return result
+        else:
+            result["stream_started"] = True
+            result["discover_success"] = True
+            result["matched_stream"] = matched
 
-        # Discover.
+        # Discover again after startup so the result also captures nearby streams
+        # during a stable post-registration window.
         streams = discover_streams(discover_seconds, stream_type="EEG")
-        matching = [s for s in streams if s["name"] == stream_name]
+        combined_streams = {s["source_id"] or f"{s['name']}::{s['hostname']}": s for s in startup_streams}
+        combined_streams.update({s["source_id"] or f"{s['name']}::{s['hostname']}": s for s in streams})
+        streams = list(combined_streams.values())
+        matching = [
+            s
+            for s in streams
+            if stream_matches(s, stream_name, int(config["expected_channels"]), float(config["sample_rate"]))
+        ]
         result["streams_found"] = streams
-        result["stream_count_found"] = len(matching)  # count exact name matches
+        result["stream_count_found"] = len(streams)
+        result["matching_stream_count"] = len(matching)
         result["discover_success"] = len(matching) > 0
         if matching:
             result["matched_stream"] = matching[0]
@@ -163,8 +244,8 @@ def run_one_sweep(config: dict, edf_path: str, stream_seconds: float, discover_s
                 proc.wait()
             except Exception:
                 pass
+        result["duration_sec"] = round(time.time() - t0, 2)
 
-    result["duration_sec"] = round(time.time() - t0, 2)
     return result
 
 
@@ -174,7 +255,8 @@ def main() -> None:
     parser.add_argument("--out", default="outputs/runs/day10/lsl_param_sweep_results.json", help="Output JSON path.")
     parser.add_argument("--stream-seconds", type=float, default=15.0, help="Seconds to stream per config.")
     parser.add_argument("--discover-seconds", type=float, default=5.0, help="Seconds to discover after stream starts.")
-    parser.add_argument("--python", default=sys.executable, help="Python interpreter to use for subprocess.")
+    parser.add_argument("--startup-timeout", type=float, default=30.0, help="Seconds to wait for EDF loading and LSL registration.")
+    parser.add_argument("--python", default=r"C:\Users\shen\anaconda3\envs\brainfusion\python.exe", help="Python interpreter to use for subprocess.")
     args = parser.parse_args()
 
     edf_path = Path(args.edf)
@@ -186,12 +268,23 @@ def main() -> None:
     results: list[dict] = []
 
     print(f"Running {len(SWEEP_CONFIGS)} LSL parameter sweep(s) on {edf_path.name}")
-    print(f"Stream duration per config: {args.stream_seconds:.0f}s, discover window: {args.discover_seconds:.0f}s")
+    print(
+        f"Stream duration per config: {args.stream_seconds:.0f}s, "
+        f"startup timeout: {args.startup_timeout:.0f}s, "
+        f"discover window: {args.discover_seconds:.0f}s"
+    )
     print("-" * 60)
 
     for i, config in enumerate(SWEEP_CONFIGS, 1):
         print(f"[{i}/{len(SWEEP_CONFIGS)}] {config['label']} ... ", end="", flush=True)
-        result = run_one_sweep(config, str(edf_path), args.stream_seconds, args.discover_seconds, args.python)
+        result = run_one_sweep(
+            config,
+            str(edf_path),
+            args.stream_seconds,
+            args.discover_seconds,
+            args.startup_timeout,
+            args.python,
+        )
         results.append(result)
 
         if result["discover_success"]:
@@ -208,6 +301,7 @@ def main() -> None:
         "edf_path": str(edf_path),
         "stream_seconds_per_config": args.stream_seconds,
         "discover_seconds_per_config": args.discover_seconds,
+        "startup_timeout_per_config": args.startup_timeout,
         "total_configs": len(SWEEP_CONFIGS),
         "successful_configs": sum(1 for r in results if r["discover_success"]),
         "results": results,
