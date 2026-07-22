@@ -47,6 +47,8 @@ def explain_metrics(metrics: dict[str, Any]) -> list[str]:
     if isinstance(acc, (float, int)) and isinstance(macro_f1, (float, int)):
         diff = abs(acc - macro_f1)
         lines.append(f"- Accuracy 与 Macro-F1 差值为 {diff:.4f}")
+        if diff > 0.15:
+            lines.append("- Accuracy 明显高于 Macro-F1，可能存在类别不平衡，不能只参考 Accuracy。")
 
     if isinstance(kappa, (float, int)):
         if kappa < 0.4:
@@ -70,6 +72,40 @@ def render_confusion_matrix(metrics: dict[str, Any]) -> list[str]:
         values = [str(row.get(pred, 0)) for pred in ["0", "1", "2", "3", "4"]]
         lines.append(f"| {STAGE_NAMES[stage]} | " + " | ".join(values) + " |")
     return lines
+
+def explain_diagnosis(diagnosis):
+
+    result=[]
+
+    for item in diagnosis:
+
+        if isinstance(item,dict):
+
+            msg=item.get("message","")
+
+        else:
+
+            msg=str(item)
+
+        if "LSL" in msg:
+
+            result.append(
+                "确认 LSL 推流程序已启动。"
+            )
+
+        elif "NeuroSkill" in msg:
+
+            result.append(
+                "确认 daemon 已启动。"
+            )
+
+        elif "EDF" in msg:
+
+            result.append(
+                "检查 EDF 文件路径。"
+            )
+
+    return result[:5]
 
 def build_llm_prompt(metrics: dict[str, Any], state: dict[str, Any], neuroskill: dict[str, Any] = {}) -> str:
     prompt = """# 睡眠分期报告生成指令
@@ -102,18 +138,64 @@ def build_llm_prompt(metrics: dict[str, Any], state: dict[str, Any], neuroskill:
     prompt += "```json\n" + json.dumps(metrics, ensure_ascii=False, indent=2) + "\n```\n"
     prompt += "\n### agent_state.json\n"
     prompt += "```json\n" + json.dumps(state, ensure_ascii=False, indent=2) + "\n```\n"
-        prompt += "\n### neuroskill_sleep.json\n"
+    prompt += "\n### neuroskill_sleep.json\n"
     if neuroskill:
         prompt += "```json\n" + json.dumps(neuroskill, ensure_ascii=False, indent=2) + "\n```\n"
     else:
         prompt += "missing（本次运行未提供）\n"
     return prompt
 
-def build_report(metrics: dict[str, Any], state: dict[str, Any]) -> str:
+def build_report(metrics: dict[str, Any],state: dict[str, Any],status: dict[str, Any],lsl: dict[str, Any]) -> str:#要添加参数的话记得把下面要调用的地方也改了，比如report = build_report那里
     lines: list[str] = []
-    lines.append("# Sleep Staging Agent Report")
+    backend=state.get("backend_effective",state.get("backend"))
+    status=state.get("status","")
+
+    if backend=="mne_baseline":
+
+        title="# Fallback Sleep Report"
+
+    elif status=="failed":
+
+        title="# Failure Report"
+
+    else:
+
+        title="# Sleep Staging Report"
+
+    lines.append(title)
     lines.append("")
     lines.append("## Run Summary")
+    lines.append("## NeuroSkill Status")
+    lines.append("")
+
+    if not status:
+        lines.append("missing")
+    else:
+
+        ok=status.get("ok")
+
+        if ok:
+
+            lines.append("- NeuroSkill daemon: Available")
+
+        else:
+
+            lines.append("- NeuroSkill daemon: Unavailable")
+
+    if isinstance(lsl,list):
+
+        lines.append(f"- LSL streams found: {len(lsl)}")
+
+    elif isinstance(lsl,dict):
+
+        streams=lsl.get("streams",[])
+
+        lines.append(f"- LSL streams found: {len(streams)}")
+
+    else:
+
+        lines.append("- LSL: missing")
+
     lines.append("")
     lines.append(f"- Request: {state.get('request', 'missing')}")
     lines.append(f"- Backend: {state.get('backend', 'missing')}")
@@ -147,6 +229,26 @@ def build_report(metrics: dict[str, Any], state: dict[str, Any]) -> str:
                 if next_action:
                     lines.append(f"  Next action: {next_action}")
         lines.append("")
+
+        tips=explain_diagnosis(diagnosis)
+        if tips:
+
+            lines.append("")
+            lines.append("### Suggestions")
+
+            for t in tips:
+
+                lines.append(f"- {t}")
+    
+    next_action=state.get("next_action")
+    if next_action:
+
+        lines.append("")
+        lines.append("## Next Action")
+        lines.append("")
+        lines.append(str(next_action))
+    else:
+        lines.append("missing")
         
     lines.append("## Referenced Files")
     lines.append("")
@@ -167,18 +269,24 @@ def main() -> None:
     parser.add_argument("--out", required=True, help="Output Markdown path.")
     parser.add_argument("--neuroskill", help="Path to neuroskill_sleep.json (optional)")
     parser.add_argument("--llm-prompt-out", help="Output LLM prompt text file path.")
+    parser.add_argument("--neuroskill-status",help="Path to neuroskill_status.json")
+    parser.add_argument("--lsl-discover",help="Path to lsl_discover.json")
     args = parser.parse_args()
 
     metrics = load_json(Path(args.metrics))
     state = load_json(Path(args.state)) if args.state else {}
     neuroskill = load_json(Path(args.neuroskill)) if args.neuroskill else {}
+    status = load_json(Path(args.neuroskill_status)) \
+        if args.neuroskill_status else {}
+    lsl = load_json(Path(args.lsl_discover)) \
+        if args.lsl_discover else {}
     if args.llm_prompt_out:
         prompt = build_llm_prompt(metrics, state, neuroskill)
         prompt_path = Path(args.llm_prompt_out)
         prompt_path.parent.mkdir(parents=True, exist_ok=True)
         prompt_path.write_text(prompt, encoding="utf-8")
         print(f"LLM prompt written to: {prompt_path}")
-    report = build_report(metrics, state)
+    report = build_report(metrics,state,status,lsl)
 
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
