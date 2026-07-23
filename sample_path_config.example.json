@@ -1,0 +1,5 @@
+{
+    "data_root": "data",
+    "psg_suffix": "-PSG.edf",
+    "hypnogram_suffix": "Hypnogram.edf"
+}

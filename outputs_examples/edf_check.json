@@ -1,8 +1,16 @@
 {
-    "exists": false,
-    "channels": 0,
-    "sfreq": 0,
-    "duration_sec": 0,
-    "eeg_channels": [],
-    "error": "module 'mne' has no attribute 'io'"
+    "exists": true,
+    "channels": 7,
+    "sfreq": 100.0,
+    "duration_sec": 79499.99,
+    "eeg_channels": [
+        "EEG Fpz-Cz",
+        "EEG Pz-Oz",
+        "EOG horizontal",
+        "Resp oro-nasal",
+        "EMG submental",
+        "Temp rectal",
+        "Event marker"
+    ],
+    "error": null
 }
