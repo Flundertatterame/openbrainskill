@@ -11,13 +11,17 @@
     "AF8",
     "TP10"
   ],
+  "data_source": "edf",
+  "unit": "microvolts",
+  "data_shape": [
+    4,
+    7587840
+  ],
+  "push_mode": "sample",
+  "minutes": 10.0,
+  "chunk_seconds": 0.125,
   "edf_channels_selected": [
     "EEG Fpz-Cz",
     "EEG Pz-Oz"
-  ],
-  "unit": "microvolts",
-  "data_shape": [4, 7587840],
-  "push_mode": "sample",
-  "minutes": 10.0,
-  "chunk_seconds": 0.125
+  ]
 }

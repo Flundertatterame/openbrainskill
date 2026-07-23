@@ -191,7 +191,7 @@ def get_stream_count(payload: dict[str, Any]) -> int | None:
 def build_tool_registry(args: argparse.Namespace, artifacts: dict[str, str]) -> dict[str, ToolSpec]:
     """建立工具注册表：告诉 Agent 每个步骤要调用哪个脚本和输出到哪里。"""
 
-    python = sys.executable
+    python = args.python
 
     return {
         "check_edf": ToolSpec(
@@ -567,6 +567,7 @@ def main() -> None:
     parser.add_argument("--execute", action="store_true", help="Actually execute available tool steps.")
     parser.add_argument("--lsl-check-seconds", type=float, default=5.0)
     parser.add_argument("--neuroskill-port", type=int, default=18444)
+    parser.add_argument("--python", default=r"C:\Users\shen\anaconda3\envs\brainfusion\python.exe", help="Python interpreter for subprocess calls (must have mne+pylsl).")
     args = parser.parse_args()
 
     run_dir = Path(args.run_dir) if args.run_dir else PROJECT_ROOT / "outputs" / "runs" / f"run_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
