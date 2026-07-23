@@ -2,6 +2,15 @@
   "run_id": "string",
   "request": "string",
   "backend": "neuroskill_lsl | mne_baseline",
+  "backend_effective": "neuroskill_lsl | mne_baseline",
+  "task": {
+    "task": "sleep_staging",
+    "sample_id": "string",
+    "backend_requested": "neuroskill_lsl | mne_baseline",
+    "need_report": "boolean",
+    "psg": "string",
+    "hypnogram": "string"
+  },
   "status": "planned | running | completed | failed | fallback",
   "inputs": {
     "psg_edf": "string",
@@ -11,7 +20,13 @@
     {
       "step": "string",
       "tool": "string",
+      "command": ["string"],
       "status": "pending | running | completed | failed | skipped",
+      "expected_output": "string",
+      "failure_policy": "string",
+      "exit_code": "number | null",
+      "output_path": "string",
+      "stdout_summary": "string",
       "output": "string",
       "error": "string"
     }
@@ -21,12 +36,14 @@
     "edf_check": "string",
     "lsl_discover": "string",
     "neuroskill_status": "string",
+    "neuroskill_lsl_discover": "string",
     "neuroskill_sleep": "string",
     "truth_labels": "string",
     "pred_labels": "string",
     "metrics": "string",
     "final_report": "string"
   },
+  "next_action": "string",
   "diagnosis": [
     {
       "level": "info | warning | error",

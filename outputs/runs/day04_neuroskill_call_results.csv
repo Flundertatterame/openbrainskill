@@ -1,0 +1,4 @@
+command,success,url,error_type,notes
+status,false,http://127.0.0.1:18444/,connection_error,"GET /v1/status and POST / both failed; daemon was not reachable"
+lsl-discover,false,http://127.0.0.1:18444/lsl/discover,connection_error,"GET /v1/lsl/discover and GET /lsl/discover both failed; raw attempts saved"
+sleep,false,http://127.0.0.1:18444/,connection_error,"POST /v1/sleep, POST /sleep and command fallback all failed; daemon was not reachable"

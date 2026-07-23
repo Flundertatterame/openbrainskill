@@ -1,0 +1,38 @@
+{
+  "schema_version": "1.0",
+  "command": "lsl-discover",
+  "timestamp": "2026-07-19T21:40:10+08:00",
+  "ok": false,
+  "url": "http://127.0.0.1:18444/lsl/discover",
+  "response": null,
+  "error": {
+    "type": "connection_error",
+    "message": "[WinError 10061] 由于目标计算机积极拒绝，无法连接。"
+  },
+  "attempts": [
+    {
+      "ok": false,
+      "method": "GET",
+      "url": "http://127.0.0.1:18444/v1/lsl/discover",
+      "http_status": null,
+      "elapsed_ms": 2036.1,
+      "response": null,
+      "error": {
+        "type": "connection_error",
+        "message": "[WinError 10061] 由于目标计算机积极拒绝，无法连接。"
+      }
+    },
+    {
+      "ok": false,
+      "method": "GET",
+      "url": "http://127.0.0.1:18444/lsl/discover",
+      "http_status": null,
+      "elapsed_ms": 2014.8,
+      "response": null,
+      "error": {
+        "type": "connection_error",
+        "message": "[WinError 10061] 由于目标计算机积极拒绝，无法连接。"
+      }
+    }
+  ]
+}

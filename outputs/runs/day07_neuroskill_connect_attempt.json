@@ -1,0 +1,50 @@
+{
+  "schema_version": "1.0",
+  "command": "connect",
+  "timestamp": "2026-07-19T21:40:44+08:00",
+  "ok": false,
+  "url": "http://127.0.0.1:18444/",
+  "response": null,
+  "error": {
+    "type": "timeout",
+    "message": "timed out"
+  },
+  "attempts": [
+    {
+      "ok": false,
+      "method": "POST",
+      "url": "http://127.0.0.1:18444/v1/lsl/connect",
+      "http_status": null,
+      "elapsed_ms": 217.2,
+      "response": null,
+      "error": {
+        "type": "timeout",
+        "message": "timed out"
+      }
+    },
+    {
+      "ok": false,
+      "method": "POST",
+      "url": "http://127.0.0.1:18444/lsl/connect",
+      "http_status": null,
+      "elapsed_ms": 200.1,
+      "response": null,
+      "error": {
+        "type": "timeout",
+        "message": "timed out"
+      }
+    },
+    {
+      "ok": false,
+      "method": "POST",
+      "url": "http://127.0.0.1:18444/",
+      "http_status": null,
+      "elapsed_ms": 200.0,
+      "response": null,
+      "error": {
+        "type": "timeout",
+        "message": "timed out"
+      }
+    }
+  ]
+}
