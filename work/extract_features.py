@@ -104,7 +104,7 @@ def band_power(data, sfreq):
         idx = (
             (freqs >= low)
             &
-            (freqs <= high)
+            (freqs < high)
         )
 
         power = np.sum(
