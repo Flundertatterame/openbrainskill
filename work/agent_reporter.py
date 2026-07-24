@@ -145,21 +145,16 @@ def build_llm_prompt(metrics: dict[str, Any], state: dict[str, Any], neuroskill:
         prompt += "missing（本次运行未提供）\n"
     return prompt
 
-def build_report(metrics: dict[str, Any],state: dict[str, Any],status: dict[str, Any],lsl: dict[str, Any]) -> str:#要添加参数的话记得把下面要调用的地方也改了，比如report = build_report那里
+def build_report(metrics: dict[str, Any],state: dict[str, Any],neuroskill_status: dict[str, Any],lsl: dict[str, Any]) -> str:#要添加参数的话记得把下面要调用的地方也改了，比如report = build_report那里
     lines: list[str] = []
     backend=state.get("backend_effective",state.get("backend"))
-    status=state.get("status","")
+    run_status = state.get("status", "missing")
 
     if backend=="mne_baseline":
-
         title="# Fallback Sleep Report"
-
-    elif status=="failed":
-
+    elif run_status == "failed":
         title="# Failure Report"
-
     else:
-
         title="# Sleep Staging Report"
 
     lines.append(title)
@@ -168,32 +163,21 @@ def build_report(metrics: dict[str, Any],state: dict[str, Any],status: dict[str,
     lines.append("## NeuroSkill Status")
     lines.append("")
 
-    if not status:
+    if not neuroskill_status:
         lines.append("missing")
     else:
-
-        ok=status.get("ok")
-
+        ok=neuroskill_status.get("ok")
         if ok:
-
             lines.append("- NeuroSkill daemon: Available")
-
         else:
-
             lines.append("- NeuroSkill daemon: Unavailable")
 
     if isinstance(lsl,list):
-
         lines.append(f"- LSL streams found: {len(lsl)}")
-
     elif isinstance(lsl,dict):
-
         streams=lsl.get("streams",[])
-
         lines.append(f"- LSL streams found: {len(streams)}")
-
     else:
-
         lines.append("- LSL: missing")
 
     lines.append("")
@@ -232,17 +216,13 @@ def build_report(metrics: dict[str, Any],state: dict[str, Any],status: dict[str,
 
         tips=explain_diagnosis(diagnosis)
         if tips:
-
             lines.append("")
             lines.append("### Suggestions")
-
             for t in tips:
-
                 lines.append(f"- {t}")
     
     next_action=state.get("next_action")
     if next_action:
-
         lines.append("")
         lines.append("## Next Action")
         lines.append("")
