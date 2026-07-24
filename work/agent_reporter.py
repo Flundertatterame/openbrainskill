@@ -115,6 +115,8 @@ def explain_metrics(metrics: dict[str, Any]) -> list[str]:
         lines.append(f"- Accuracy 与 Macro-F1 差值为 {diff:.4f}")
         if diff > 0.15:
             lines.append("- Accuracy 明显高于 Macro-F1，可能存在类别不平衡，不能只参考 Accuracy。")
+        else:
+            lines.append("- Accuracy 与 Macro-F1 差值较小，本报告不据此推断类别分布情况。")
 
     if isinstance(kappa, (float, int)):
         if kappa < 0.4:
@@ -437,12 +439,28 @@ def build_report(metrics: dict[str, Any],state: dict[str, Any],neuroskill_status
         
     lines.append("## Referenced Files")
     lines.append("")
-    if not artifacts:
-        lines.append("missing")
-    else:
-        for name, path in artifacts.items():
-            lines.append(f"- {name}: `{path}`")
+    lines.append("### Core Evaluation")
+    lines.append("- metrics.json")
+    lines.append("- aligned_predictions.csv")
     lines.append("")
+
+    lines.append("### Agent State")
+    lines.append("- agent_state.json")
+
+    if neuroskill_status:
+        lines.append("- neuroskill_status.json")
+    else:
+        lines.append("- neuroskill_status.json : missing")
+
+    if lsl:
+        lines.append("- lsl_discover.json")
+    else:
+        lines.append("- lsl_discover.json : missing")
+
+    if neuroskill:
+        lines.append("- neuroskill_sleep.json")
+    else:
+        lines.append("- neuroskill_sleep.json : missing")
     lines.append("## Interpretation")
     lines.append("")
     lines.append("本报告只基于脚本输出的真实 JSON/CSV 结果生成。LLM 可以用于润色表达，但不能新增未出现在结果文件中的指标或结论。")
