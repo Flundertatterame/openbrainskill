@@ -309,8 +309,8 @@ def build_plan(args: argparse.Namespace, run_dir: Path) -> AgentState:
         "neuroskill_status": str(run_dir / "neuroskill_status.json"),
         "neuroskill_lsl_discover": str(run_dir / "neuroskill_lsl_discover.json"),
         "neuroskill_sleep": str(run_dir / "neuroskill_sleep.json"),
-        "truth_labels": str(run_dir / "true_labels.csv"),
-        "pred_labels": str(run_dir / "pred_labels.csv"),
+        "truth_labels": str(run_dir / sample_id / "true_labels.csv"),
+        "pred_labels": str(run_dir / sample_id / "pred_labels.csv"),
         "metrics": str(run_dir / "metrics.json"),
         "final_report": str(run_dir / "final_report.md"),
     }

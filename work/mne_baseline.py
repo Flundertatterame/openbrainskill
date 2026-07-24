@@ -201,42 +201,52 @@ def band_power(
 
 def extract_features(
         raw,
-        channel
+        channel,
+        truth
 ):
 
+    sfreq = raw.info["sfreq"]
 
-    sfreq=raw.info["sfreq"]
-
-
-    epoch_samples=int(
-        sfreq*30
+    epoch_samples = int(
+        sfreq * 30
     )
 
-
-    data=raw.get_data(
+    data = raw.get_data(
         picks=[channel]
     )[0]
 
 
-    n_epochs=len(data)//epoch_samples
+    # 使用真实标签中的时间点
+    epoch_times = truth["start_sec"].tolist()
 
 
-    rows=[]
+    rows = []
 
 
-    for epoch in range(n_epochs):
+    for start_sec in epoch_times:
+
+        start_sample = int(
+            start_sec * sfreq
+        )
+
+        end_sample = (
+            start_sample
+            +
+            epoch_samples
+        )
 
 
-        start_sec=epoch*30
-
-
-        segment=data[
-            epoch*epoch_samples:
-            (epoch+1)*epoch_samples
+        segment = data[
+            start_sample:end_sample
         ]
 
 
-        feature=band_power(
+        # 防止最后一个epoch长度不足30秒
+        if len(segment) < epoch_samples:
+            continue
+
+
+        feature = band_power(
             segment,
             sfreq
         )
@@ -244,7 +254,7 @@ def extract_features(
 
         rows.append(
             {
-                "start_sec":start_sec,
+                "start_sec": start_sec,
                 **feature
             }
         )
@@ -319,7 +329,8 @@ def run_baseline(
 
     features = extract_features(
         raw,
-        channel
+        channel,
+        truth
     )
 
     print(

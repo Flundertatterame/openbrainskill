@@ -1,10 +1,13 @@
 {
+    "_comment": "Sleep-EDF sample path configuration",
+
     "data_root": "data",
+
+    "output_root": "outputs_examples",
+
     "psg_suffix": "-PSG.edf",
-    "hypnogram_suffix": "Hypnogram.edf"
-}
-  "_comment": "将此文件复制为 sample_path_config.json 并修改路径指向实际数据目录。",
-  "data_root": "H:/SCNU重要资料/课题/BrainFusion/SleepEDF",
-  "psg_suffix": "-PSG.edf",
-  "hypnogram_suffix": "Hypnogram.edf"
+
+    "hypnogram_suffix": "Hypnogram.edf",
+
+    "truth_file": "true_labels.csv"
 }

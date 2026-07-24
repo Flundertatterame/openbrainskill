@@ -63,17 +63,27 @@ def resolve_sample_paths(sample_id, config_file):
 
     # -------------------------
     # True labels
-    # 默认放在 outputs_examples/<sample_id>/true_labels.csv
+    # 每个样本独立保存
+    # outputs_examples/<sample_id>/true_labels.csv
     # -------------------------
+
+    output_dir = (
+        Path(config.get("output_root", "outputs_examples"))
+        /
+        sample_id
+)
+
     truth_file = (
-    Path("outputs_examples")
-    / "true_labels.csv"
+        output_dir
+        /
+        "true_labels.csv"
     )
 
     return {
         "psg": str(psg_file),
         "hypnogram": str(hypnogram_file),
-        "truth": str(truth_file)
+        "truth": str(truth_file),
+        "output_dir": str(output_dir)
     }
 
 
