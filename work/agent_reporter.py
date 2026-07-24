@@ -36,12 +36,75 @@ def fmt_float(value: Any) -> str:
         return f"{value:.4f}"
     return "missing"
 
+def get_metric_value(metrics: dict[str, Any], key: str):
+
+    # 新旧字段兼容
+
+    if key == "n_aligned_epochs":
+
+        return metrics.get(
+            "n_aligned_epochs",
+            metrics.get(
+                "matched_epochs",
+                "missing"
+            )
+        )
+
+
+    if key == "macro_f1":
+
+        # 旧格式
+        if "macro_f1" in metrics:
+            return metrics["macro_f1"]
+
+        # 新格式 classification_report
+        report = metrics.get(
+            "classification_report"
+        )
+
+        if isinstance(report,list):
+
+            values=[]
+
+            for item in report:
+
+                if isinstance(item,dict):
+
+                    f1=item.get(
+                        "f1-score"
+                    )
+
+                    if isinstance(f1,(int,float)):
+                        values.append(f1)
+
+
+            if values:
+                return sum(values)/len(values)
+
+
+        return "missing"
+
+
+
+    if key == "cohen_kappa":
+
+        return metrics.get(
+            "cohen_kappa",
+            "missing"
+        )
+
+
+    return metrics.get(
+        key,
+        "missing"
+    )
+
 
 def explain_metrics(metrics: dict[str, Any]) -> list[str]:
     lines: list[str] = []
-    acc = metrics.get("accuracy")
-    macro_f1 = metrics.get("macro_f1")
-    kappa = metrics.get("cohen_kappa")
+    acc = get_metric_value(metrics,"accuracy")
+    macro_f1 = get_metric_value(metrics,"macro_f1")
+    kappa = get_metric_value(metrics,"cohen_kappa")
 
     lines.append(f"- Accuracy: {fmt_float(acc)}")
     lines.append(f"- Macro-F1: {fmt_float(macro_f1)}")
@@ -65,15 +128,130 @@ def explain_metrics(metrics: dict[str, Any]) -> list[str]:
 
 
 def render_confusion_matrix(metrics: dict[str, Any]) -> list[str]:
-    matrix = metrics.get("confusion_matrix")
-    if not isinstance(matrix, dict):
-        return ["未找到混淆矩阵。"]
 
-    lines = ["| True \\ Pred | Wake | N1 | N2 | N3 | REM |", "|---|---:|---:|---:|---:|---:|"]
-    for stage in ["0", "1", "2", "3", "4"]:
-        row = matrix.get(stage, {})
-        values = [str(row.get(pred, 0)) for pred in ["0", "1", "2", "3", "4"]]
-        lines.append(f"| {STAGE_NAMES[stage]} | " + " | ".join(values) + " |")
+    matrix = metrics.get(
+        "confusion_matrix"
+    )
+
+
+    if matrix is None:
+        return [
+            "未找到混淆矩阵。"
+        ]
+
+
+    lines=[
+        "| True \\ Pred | Wake | N1 | N2 | N3 | REM |",
+        "|---|---:|---:|---:|---:|---:|"
+    ]
+
+
+    # 旧格式 dict
+
+    if isinstance(matrix,dict):
+
+        for stage in ["0","1","2","3","4"]:
+
+            row=matrix.get(
+                stage,
+                {}
+            )
+
+            values=[
+                str(
+                    row.get(pred,0)
+                )
+                for pred in ["0","1","2","3","4"]
+            ]
+
+            lines.append(
+                f"| {STAGE_NAMES[stage]} | "
+                +
+                " | ".join(values)
+                +
+                " |"
+            )
+
+
+    # 新格式 list
+
+    elif isinstance(matrix,list):
+
+        for idx,row in enumerate(matrix):
+
+            if idx >=5:
+                break
+
+
+            values=[
+                str(x)
+                for x in row
+            ]
+
+
+            while len(values)<5:
+                values.append("0")
+
+
+            lines.append(
+                f"| {STAGE_NAMES[str(idx)]} | "
+                +
+                " | ".join(values[:5])
+                +
+                " |"
+            )
+
+
+    else:
+
+        return [
+            "混淆矩阵格式无法解析。"
+        ]
+
+
+    return lines
+
+def render_classification_report(metrics):
+
+    report = metrics.get(
+        "classification_report"
+    )
+
+
+    if not isinstance(report,list):
+
+        return []
+
+
+    lines=[]
+
+    lines.append(
+        "## Classification Report"
+    )
+
+    lines.append("")
+
+    lines.append(
+        "| Stage | Precision | Recall | F1 |"
+    )
+
+    lines.append(
+        "|---|---:|---:|---:|"
+    )
+
+
+    for item in report:
+
+        if isinstance(item,dict):
+
+            lines.append(
+                f"| {item.get('stage','missing')} "
+                f"| {item.get('precision','missing')} "
+                f"| {item.get('recall','missing')} "
+                f"| {item.get('f1-score','missing')} |"
+            )
+
+
     return lines
 
 def explain_confusion_pattern(metrics: dict[str,Any])->list[str]:
@@ -208,7 +386,7 @@ def build_report(metrics: dict[str, Any],state: dict[str, Any],neuroskill_status
     lines.append(f"- Request: {state.get('request', 'missing')}")
     lines.append(f"- Backend: {state.get('backend', 'missing')}")
     lines.append(f"- Status: {state.get('status', 'missing')}")
-    lines.append(f"- Aligned epochs: {metrics.get('n_aligned_epochs', 'missing')}")
+    lines.append(f"- Aligned epochs: {get_metric_value(metrics,'n_aligned_epochs')}")
     lines.append("")
 
     lines.append("## Metrics")
@@ -219,6 +397,8 @@ def build_report(metrics: dict[str, Any],state: dict[str, Any],neuroskill_status
     lines.append("## Confusion Matrix")
     lines.append("")
     lines.extend(render_confusion_matrix(metrics))
+    lines.append("")
+    lines.extend(render_classification_report(metrics))
     lines.extend(explain_confusion_pattern(metrics))
     lines.append("")
 
