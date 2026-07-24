@@ -27,6 +27,9 @@ def load_json(path: Path | None) -> dict[str, Any]:
         return {}
     return json.loads(path.read_text(encoding="utf-8"))
 
+def get_artifacts(state: dict[str, Any]) -> dict[str, Any]:
+    return state.get("artifacts",{})
+
 
 def fmt_float(value: Any) -> str:
     if isinstance(value, (float, int)):
@@ -73,6 +76,18 @@ def render_confusion_matrix(metrics: dict[str, Any]) -> list[str]:
         lines.append(f"| {STAGE_NAMES[stage]} | " + " | ".join(values) + " |")
     return lines
 
+def explain_confusion_pattern(metrics: dict[str,Any])->list[str]:
+    matrix = metrics.get("confusion_matrix")
+    if not isinstance(matrix,dict):
+        return []
+
+    lines=[]
+
+    if "1" in matrix:
+        lines.append("- N1阶段混淆情况需要结合混淆矩阵观察。")
+
+    return lines
+
 def explain_diagnosis(diagnosis):
 
     result=[]
@@ -107,16 +122,18 @@ def explain_diagnosis(diagnosis):
 
     return result[:5]
 
-def build_llm_prompt(metrics: dict[str, Any], state: dict[str, Any], neuroskill: dict[str, Any] = {}) -> str:
+def build_llm_prompt(metrics: dict[str, Any],state: dict[str, Any],neuroskill: dict[str, Any] = {},status: dict[str, Any] = {}) -> str:
     prompt = """# 睡眠分期报告生成指令
 
 ## 角色定位
 你是睡眠分期结果报告生成助手，仅基于提供的结构化数据生成自然语言说明，不做算法判断、不补充医学知识、不编造数据。
 
-## 可用输入（仅此三类，禁止使用任何外部知识）
-1. metrics.json：分期评估指标
-2. agent_state.json：Agent执行状态、步骤、诊断信息
-3. neuroskill_sleep.json：NeuroSkill原始分期输出（若缺失则忽略）
+## 可用输入
+1. metrics.json
+2. agent_state.json
+3. neuroskill_sleep.json
+4. neuroskill_status.json
+5. lsl_discover.json
 
 ## 硬性禁止规则
 1. 禁止编造数据中未出现的指标、数值、结论
@@ -143,10 +160,17 @@ def build_llm_prompt(metrics: dict[str, Any], state: dict[str, Any], neuroskill:
         prompt += "```json\n" + json.dumps(neuroskill, ensure_ascii=False, indent=2) + "\n```\n"
     else:
         prompt += "missing（本次运行未提供）\n"
+    
+    prompt += "\n### neuroskill_status.json\n"
+    if status:
+        prompt += "```json\n" + json.dumps(status, ensure_ascii=False, indent=2) + "\n```\n"
+    else:
+        prompt += "missing（本次运行未提供）\n"
     return prompt
 
-def build_report(metrics: dict[str, Any],state: dict[str, Any],neuroskill_status: dict[str, Any],lsl: dict[str, Any]) -> str:#要添加参数的话记得把下面要调用的地方也改了，比如report = build_report那里
+def build_report(metrics: dict[str, Any],state: dict[str, Any],neuroskill_status: dict[str, Any],lsl: dict[str, Any],neuroskill=None) -> str:#要添加参数的话记得把下面要调用的地方也改了，比如report = build_report那里
     lines: list[str] = []
+    artifacts = get_artifacts(state)
     backend=state.get("backend_effective",state.get("backend"))
     run_status = state.get("status", "missing")
 
@@ -195,6 +219,7 @@ def build_report(metrics: dict[str, Any],state: dict[str, Any],neuroskill_status
     lines.append("## Confusion Matrix")
     lines.append("")
     lines.extend(render_confusion_matrix(metrics))
+    lines.extend(explain_confusion_pattern(metrics))
     lines.append("")
 
     diagnosis = state.get("diagnosis", [])
@@ -232,9 +257,11 @@ def build_report(metrics: dict[str, Any],state: dict[str, Any],neuroskill_status
         
     lines.append("## Referenced Files")
     lines.append("")
-    lines.append("- metrics.json：分期评估指标数据")
-    lines.append("- agent_state.json：Agent 执行状态与诊断信息")
-    lines.append("- neuroskill_sleep.json：预留输入，未提供时为 missing")
+    if not artifacts:
+        lines.append("missing")
+    else:
+        for name, path in artifacts.items():
+            lines.append(f"- {name}: `{path}`")
     lines.append("")
     lines.append("## Interpretation")
     lines.append("")
@@ -261,12 +288,12 @@ def main() -> None:
     lsl = load_json(Path(args.lsl_discover)) \
         if args.lsl_discover else {}
     if args.llm_prompt_out:
-        prompt = build_llm_prompt(metrics, state, neuroskill)
+        prompt = build_llm_prompt(metrics, state, neuroskill, status)
         prompt_path = Path(args.llm_prompt_out)
         prompt_path.parent.mkdir(parents=True, exist_ok=True)
         prompt_path.write_text(prompt, encoding="utf-8")
         print(f"LLM prompt written to: {prompt_path}")
-    report = build_report(metrics,state,status,lsl)
+    report = build_report(metrics,state,status,lsl,neuroskill)
 
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
