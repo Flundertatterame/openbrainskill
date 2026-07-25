@@ -33,13 +33,16 @@
   ],
   "artifacts": {
     "agent_plan": "string",
+    "agent_state": "string",
     "edf_check": "string",
     "lsl_discover": "string",
     "neuroskill_status": "string",
     "neuroskill_lsl_discover": "string",
     "neuroskill_sleep": "string",
     "truth_labels": "string",
+    "features": "string",
     "pred_labels": "string",
+    "aligned_predictions": "string",
     "metrics": "string",
     "final_report": "string"
   },
