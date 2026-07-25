@@ -7,10 +7,10 @@ One command verifies the full pipeline:
   4. Kill the background stream and report PASS / FAIL.
 
 Usage:
-  "C:/Users/shen/anaconda3/envs/brainfusion/python.exe" work/e2e_lsl_test.py
+  python work/e2e_lsl_test.py --edf path/to/file.edf
 
   # Or with a custom EDF and shorter stream:
-  "C:/Users/shen/anaconda3/envs/brainfusion/python.exe" work/e2e_lsl_test.py --edf path/to/file.edf --seconds 15
+  python work/e2e_lsl_test.py --edf path/to/file.edf --seconds 15
 """
 
 from __future__ import annotations
@@ -25,18 +25,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 EDF_STREAM_SCRIPT = ROOT / "edf_to_lsl_stream.py"
 DISCOVER_SCRIPT = ROOT / "lsl_resolve_check.py"
-DEFAULT_EDF = ROOT.parent.parent / "BrainFusion" / "SleepEDF" / "SC4001E0-PSG.edf"
-PYTHON_EXE = r"C:\Users\shen\anaconda3\envs\brainfusion\python.exe"
-
-
-def _resolve_python() -> str:
-    """Pick the Python interpreter that has mne + pylsl available."""
-    if Path(PYTHON_EXE).exists():
-        return PYTHON_EXE
-    # Fallback: try the current interpreter.
-    print("WARNING: brainfusion Python not found at expected path, using sys.executable as fallback.",
-          file=sys.stderr)
-    return sys.executable
+DEFAULT_EDF = Path("path/to/your/PSG.edf")
 
 
 def _run_json(args: list[str], timeout: float = 30) -> tuple[int, str, str]:
@@ -79,10 +68,7 @@ def main() -> None:
                         help="Seconds to scan for LSL streams.")
     args = parser.parse_args()
 
-    python = _resolve_python()
-    if not Path(python).exists():
-        print(f"FATAL: Python interpreter not found: {python}")
-        sys.exit(1)
+    python = sys.executable
 
     if not Path(args.edf).exists():
         print(f"FATAL: EDF file not found: {args.edf}")

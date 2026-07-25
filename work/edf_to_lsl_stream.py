@@ -202,9 +202,7 @@ def check_dependencies() -> None:
 
     Prints a clear diagnostic to stderr when a dependency is missing, rather
     than letting the script fail deep inside a function call with a cryptic
-    ModuleNotFoundError.  On this machine the correct interpreter is:
-
-        C:\\Users\\shen\\anaconda3\\envs\\brainfusion\\python.exe
+    ModuleNotFoundError.
     """
     missing: list[str] = []
     try:
@@ -223,10 +221,9 @@ def check_dependencies() -> None:
     print(
         f"ERROR: {packages} not found in the current Python environment.\n"
         f"       Current Python: {sys.executable}\n"
-        f"       Expected Python: C:\\Users\\shen\\anaconda3\\envs\\brainfusion\\python.exe\n"
         f"\n"
-        f"Fix: activate the brainfusion conda environment or pass the full path:\n"
-        f'     "C:\\Users\\shen\\anaconda3\\envs\\brainfusion\\python.exe" {sys.argv[0]} ...',
+        f"Fix: activate the brainfusion conda environment, or install the missing\n"
+        f"     package(s) with `pip install {' '.join(missing)}`.",
         file=sys.stderr,
     )
     sys.exit(1)
