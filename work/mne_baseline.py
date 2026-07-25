@@ -436,7 +436,7 @@ def main():
     # ==========================
     if args.samples or args.samples_json:
 
-        from path_config import resolve_sample_paths
+        from path_config import resolve_sample_paths, load_config
         import json
 
         # 读取样本列表
@@ -474,8 +474,12 @@ def main():
                 args.config
             )
 
+            config = load_config(args.config)
+
+            output_root = config["output_root"]
+
             output_dir = os.path.join(
-                "outputs_examples",
+                output_root,
                 sample
             )
 
