@@ -11,3 +11,8 @@
 
     "truth_file": "true_labels.csv"
 }
+  "_comment": "将此文件复制为 sample_path_config.json 并修改路径指向实际数据目录。",
+  "data_root": "path/to/your/sleep-edf/data",
+  "psg_suffix": "-PSG.edf",
+  "hypnogram_suffix": "Hypnogram.edf"
+}

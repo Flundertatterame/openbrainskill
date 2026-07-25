@@ -256,7 +256,7 @@ def main() -> None:
     parser.add_argument("--stream-seconds", type=float, default=15.0, help="Seconds to stream per config.")
     parser.add_argument("--discover-seconds", type=float, default=5.0, help="Seconds to discover after stream starts.")
     parser.add_argument("--startup-timeout", type=float, default=30.0, help="Seconds to wait for EDF loading and LSL registration.")
-    parser.add_argument("--python", default=r"C:\Users\shen\anaconda3\envs\brainfusion\python.exe", help="Python interpreter to use for subprocess.")
+    parser.add_argument("--python", default=sys.executable, help="Python interpreter to use for subprocess.")
     args = parser.parse_args()
 
     edf_path = Path(args.edf)
