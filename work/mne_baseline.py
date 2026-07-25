@@ -389,7 +389,53 @@ def run_baseline(
     )
 
 
+def prepare_sample(paths):
 
+    truth_path = paths["truth"]
+
+    output_dir = os.path.dirname(truth_path)
+
+
+    os.makedirs(
+        output_dir,
+        exist_ok=True
+    )
+
+
+    if os.path.exists(truth_path):
+
+        print(
+            "Truth exists:",
+            truth_path
+        )
+
+        return
+
+
+    print(
+        "Generating truth:",
+        truth_path
+    )
+
+
+    cmd = [
+        "python",
+        "work/extract_sleep_edf_labels.py",
+        "--hypnogram",
+        paths["hypnogram"],
+        "--out",
+        truth_path
+    ]
+
+
+    result = subprocess.run(cmd)
+
+
+    if result.returncode != 0:
+
+        raise RuntimeError(
+            "Generate truth failed"
+        )
 
 def main():
 
@@ -488,7 +534,7 @@ def main():
                 output_dir,
                 exist_ok=True
             )
-
+            prepare_sample(paths)
             truth_path = paths["truth"]
 
 
