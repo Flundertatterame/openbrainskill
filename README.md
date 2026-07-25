@@ -53,6 +53,32 @@ python .\work\edf_to_lsl_stream.py --help
 python .\work\evaluate_sleep_staging.py --help
 ```
 
+## LSL 推流
+
+推荐使用 PowerShell 演示脚本。它会启动 EDF -> LSL 推流、执行 Python LSL 自检，并将 metadata、运行状态、discover 结果和日志写入同一个 run 目录。
+
+默认 `strict` 通道策略会保留真实 EDF 通道和标签。需要将 2 通道 Sleep-EDF 映射为 4 通道 Muse 标签时，必须显式传入 `--channel-policy duplicate`，输出 metadata 会标记为合成重复通道。`features.csv` 是每 epoch 的频段特征，不能用作 LSL EEG；它应交给 `mne_baseline`。`epochs.npy` 则应通过 `--input-layout epochs-samples`（或 source manifest）声明其 epoch 维度。
+
+```powershell
+.\run_lsl_demo.ps1 -Edf "..\BrainFusion\SleepEDF\SC4001E0-PSG.edf"
+```
+
+也可以直接调用 Adapter。`--state-json-out` 记录 `running`、`dry_run_completed`、`completed` 或 `failed`；`--error-json-out` 在失败时提供 `error_type`、`message` 和下一步命令建议。
+
+```powershell
+python .\work\edf_to_lsl_stream.py `
+  --edf "..\BrainFusion\SleepEDF\SC4001E0-PSG.edf" `
+  --minutes 10 `
+  --metadata-json-out .\outputs\runs\lsl_demo\lsl_stream_metadata.json `
+  --state-json-out .\outputs\runs\lsl_demo\lsl_stream_state.json `
+  --error-json-out .\outputs\runs\lsl_demo\lsl_stream_error.json
+
+python .\work\lsl_param_sweep.py `
+  --edf "..\BrainFusion\SleepEDF\SC4001E0-PSG.edf" `
+  --out .\outputs\runs\day15\lsl_sweep_summary.json `
+  --neuroskill-port 18444
+```
+
 ## 生成 Agent 执行计划
 
 ```powershell

@@ -1,0 +1,15 @@
+{
+  "status": "failed",
+  "sweep_timestamp": "2026-07-25T03:07:51.401777+00:00",
+  "edf_path": "missing.edf",
+  "total_configs": 5,
+  "successful_configs": 0,
+  "failed_configs": 5,
+  "total_duration_sec": 0.0,
+  "error": {
+    "error_type": "FileNotFoundError",
+    "message": "EDF file not found: missing.edf",
+    "command_hint": "Pass an existing PSG EDF path to --edf."
+  },
+  "results": []
+}

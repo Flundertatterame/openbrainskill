@@ -1,0 +1,16 @@
+{
+  "ok": true,
+  "step": "check_edf",
+  "tool": "edf_to_lsl_stream.py",
+  "command": [
+    "C:\\Users\\shen\\anaconda3\\envs\\brainfusion\\python.exe",
+    "H:\\SCNU重要资料\\课题\\openbrainskill\\work\\edf_to_lsl_stream.py",
+    "--edf",
+    "H:\\SCNU重要资料\\课题\\BrainFusion\\SleepEDF\\SC4001E0-PSG.edf",
+    "--dry-run"
+  ],
+  "exit_code": 0,
+  "stdout_summary": "EDF channels selected: ['EEG Fpz-Cz', 'EEG Pz-Oz']\nData shape for LSL: channels=2, samples=7587840\nAmplitude median abs: 7.818 microvolts",
+  "stdout": "EDF channels selected: ['EEG Fpz-Cz', 'EEG Pz-Oz']\nData shape for LSL: channels=2, samples=7587840\nAmplitude median abs: 7.818 microvolts\n",
+  "stderr": "C:\\Users\\shen\\anaconda3\\envs\\brainfusion\\lib\\site-packages\\mne\\datasets\\eegbci\\eegbci.py:8: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.\n  import pkg_resources\nH:\\SCNU重要资料\\课题\\openbrainskill\\work\\edf_to_lsl_stream.py:88: RuntimeWarning: Number of records from the header does not match the file size (perhaps the recording was not stopped before exiting). Inferring from the file size.\n  raw = mne.io.read_raw_edf(str(edf_path), preload=True, verbose=False)\n"
+}

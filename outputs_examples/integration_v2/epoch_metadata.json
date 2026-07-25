@@ -1,0 +1,33 @@
+{
+  "name": "SleepEDF_LSL",
+  "type": "EEG",
+  "channel_count": 1,
+  "nominal_srate": 100.0,
+  "channel_format": "cf_float32",
+  "source_id": "sleep-edf-sc4001e0_fpzcz_epochs-cfebcc51",
+  "labels": [
+    "EEG Fpz-Cz"
+  ],
+  "data_source": "npy",
+  "unit": "microvolts",
+  "data_shape": [
+    1,
+    2964000
+  ],
+  "source_channel_count": 1,
+  "lsl_channel_count": 1,
+  "channel_policy": "strict",
+  "channel_mapping": [
+    {
+      "lsl_label": "EEG Fpz-Cz",
+      "source_channel": "EEG Fpz-Cz"
+    }
+  ],
+  "synthetic_channel_duplication": false,
+  "source_manifest": ".\\configs\\eeg_source_manifest.example.json",
+  "push_mode": "chunk",
+  "minutes": 10.0,
+  "chunk_seconds": 0.125,
+  "npy_path": "..\\BrainFusion\\output\\SC4001E0_FpzCz_epochs.npy",
+  "input_layout": "epochs-samples"
+}

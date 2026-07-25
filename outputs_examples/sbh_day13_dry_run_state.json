@@ -1,0 +1,62 @@
+{
+  "component": "lsl_adapter",
+  "status": "dry_run_completed",
+  "started_at": "2026-07-25T03:08:16.928204+00:00",
+  "command": [
+    "C:\\Users\\shen\\anaconda3\\envs\\brainfusion\\python.exe",
+    "work\\edf_to_lsl_stream.py",
+    "--edf",
+    "..\\BrainFusion\\SleepEDF\\SC4001E0-PSG.edf",
+    "--dry-run",
+    "--metadata-json-out",
+    ".\\outputs_examples\\sbh_day13_dry_run_metadata.json",
+    "--state-json-out",
+    ".\\outputs_examples\\sbh_day13_dry_run_state.json",
+    "--error-json-out",
+    ".\\outputs_examples\\sbh_day13_dry_run_error.json"
+  ],
+  "config": {
+    "stream_name": "SleepEDF_LSL",
+    "stream_type": "EEG",
+    "source_id": "sleep-edf-lsl-001",
+    "labels": [
+      "TP9",
+      "AF7",
+      "AF8",
+      "TP10"
+    ],
+    "sample_rate": 256.0,
+    "minutes": 10.0,
+    "chunk_seconds": 0.125,
+    "push_mode": "chunk",
+    "dry_run": true
+  },
+  "metadata": {
+    "name": "SleepEDF_LSL",
+    "type": "EEG",
+    "channel_count": 4,
+    "nominal_srate": 256.0,
+    "channel_format": "cf_float32",
+    "source_id": "sleep-edf-lsl-001",
+    "labels": [
+      "TP9",
+      "AF7",
+      "AF8",
+      "TP10"
+    ],
+    "data_source": "edf",
+    "unit": "microvolts",
+    "data_shape": [
+      4,
+      7587840
+    ],
+    "push_mode": "chunk",
+    "minutes": 10.0,
+    "chunk_seconds": 0.125,
+    "edf_channels_selected": [
+      "EEG Fpz-Cz",
+      "EEG Pz-Oz"
+    ]
+  },
+  "completed_at": "2026-07-25T03:08:22.285795+00:00"
+}

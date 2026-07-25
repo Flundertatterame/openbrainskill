@@ -1,0 +1,74 @@
+{
+  "component": "lsl_adapter",
+  "status": "dry_run_completed",
+  "started_at": "2026-07-25T03:25:50.451885+00:00",
+  "command": [
+    "C:\\Users\\shen\\anaconda3\\envs\\brainfusion\\python.exe",
+    "work\\edf_to_lsl_stream.py",
+    "--edf",
+    "..\\BrainFusion\\SleepEDF\\SC4001E0-PSG.edf",
+    "--dry-run",
+    "--metadata-json-out",
+    ".\\outputs_examples\\integration_v2\\edf_metadata.json",
+    "--state-json-out",
+    ".\\outputs_examples\\integration_v2\\edf_state.json"
+  ],
+  "config": {
+    "stream_name": "SleepEDF_LSL",
+    "stream_type": "EEG",
+    "source_id": "sleep-edf-sc4001e0-psg-3a0fc1a6",
+    "labels": [
+      "EEG Fpz-Cz",
+      "EEG Pz-Oz"
+    ],
+    "sample_rate": 256.0,
+    "minutes": 10.0,
+    "chunk_seconds": 0.125,
+    "push_mode": "chunk",
+    "channel_policy": "strict",
+    "input_layout": "auto",
+    "dry_run": true
+  },
+  "metadata": {
+    "name": "SleepEDF_LSL",
+    "type": "EEG",
+    "channel_count": 2,
+    "nominal_srate": 256.0,
+    "channel_format": "cf_float32",
+    "source_id": "sleep-edf-sc4001e0-psg-3a0fc1a6",
+    "labels": [
+      "EEG Fpz-Cz",
+      "EEG Pz-Oz"
+    ],
+    "data_source": "edf",
+    "unit": "microvolts",
+    "data_shape": [
+      2,
+      7587840
+    ],
+    "source_channel_count": 2,
+    "lsl_channel_count": 2,
+    "channel_policy": "strict",
+    "channel_mapping": [
+      {
+        "lsl_label": "EEG Fpz-Cz",
+        "source_channel": "EEG Fpz-Cz"
+      },
+      {
+        "lsl_label": "EEG Pz-Oz",
+        "source_channel": "EEG Pz-Oz"
+      }
+    ],
+    "synthetic_channel_duplication": false,
+    "source_manifest": null,
+    "push_mode": "chunk",
+    "minutes": 10.0,
+    "chunk_seconds": 0.125,
+    "edf_channels_selected": [
+      "EEG Fpz-Cz",
+      "EEG Pz-Oz"
+    ],
+    "input_layout": "channels-samples"
+  },
+  "completed_at": "2026-07-25T03:25:56.996635+00:00"
+}

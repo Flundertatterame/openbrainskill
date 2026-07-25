@@ -1,0 +1,166 @@
+{
+  "plan": [
+    {
+      "step": "check_edf",
+      "tool": "edf_to_lsl_stream.py",
+      "command": [
+        "C:\\Users\\shen\\anaconda3\\envs\\brainfusion\\python.exe",
+        "H:\\SCNU重要资料\\课题\\openbrainskill\\work\\edf_to_lsl_stream.py",
+        "--edf",
+        "H:\\SCNU重要资料\\课题\\BrainFusion\\SleepEDF\\SC4001E0-PSG.edf",
+        "--dry-run"
+      ],
+      "status": "pending",
+      "expected_output": "stdout contains selected EDF channels, LSL shape, and amplitude summary",
+      "failure_policy": "Stop NeuroSkill route and ask B line to fix PSG path/channel loading.",
+      "exit_code": null,
+      "output_path": "",
+      "stdout_summary": "",
+      "output": "",
+      "error": ""
+    },
+    {
+      "step": "start_lsl_stream",
+      "tool": "edf_to_lsl_stream.py",
+      "command": [
+        "C:\\Users\\shen\\anaconda3\\envs\\brainfusion\\python.exe",
+        "-u",
+        "H:\\SCNU重要资料\\课题\\openbrainskill\\work\\edf_to_lsl_stream.py",
+        "--edf",
+        "H:\\SCNU重要资料\\课题\\BrainFusion\\SleepEDF\\SC4001E0-PSG.edf",
+        "--minutes",
+        "1.0",
+        "--stream-name",
+        "SleepEDF_LSL",
+        "--stream-type",
+        "EEG",
+        "--sample-rate",
+        "256.0",
+        "--push-mode",
+        "chunk",
+        "--channel-policy",
+        "strict",
+        "--metadata-json-out",
+        "H:\\SCNU重要资料\\课题\\openbrainskill\\outputs_examples\\integration_v2\\agent_lsl_run\\lsl_stream_metadata.json",
+        "--state-json-out",
+        "H:\\SCNU重要资料\\课题\\openbrainskill\\outputs_examples\\integration_v2\\agent_lsl_run\\lsl_stream_state.json",
+        "--error-json-out",
+        "H:\\SCNU重要资料\\课题\\openbrainskill\\outputs_examples\\integration_v2\\agent_lsl_run\\lsl_stream_error.json"
+      ],
+      "status": "pending",
+      "expected_output": "H:\\SCNU重要资料\\课题\\openbrainskill\\outputs_examples\\integration_v2\\agent_lsl_run\\lsl_stream_state.json",
+      "failure_policy": "Inspect lsl_stream_error.json, then verify EDF input, channel policy, and the Python environment.",
+      "exit_code": null,
+      "output_path": "H:\\SCNU重要资料\\课题\\openbrainskill\\outputs_examples\\integration_v2\\agent_lsl_run\\lsl_stream_state.json",
+      "stdout_summary": "",
+      "output": "",
+      "error": ""
+    },
+    {
+      "step": "check_lsl_discovery",
+      "tool": "lsl_resolve_check.py",
+      "command": [
+        "C:\\Users\\shen\\anaconda3\\envs\\brainfusion\\python.exe",
+        "H:\\SCNU重要资料\\课题\\openbrainskill\\work\\lsl_resolve_check.py",
+        "--seconds",
+        "3.0",
+        "--out",
+        "H:\\SCNU重要资料\\课题\\openbrainskill\\outputs_examples\\integration_v2\\agent_lsl_run\\lsl_discover.json"
+      ],
+      "status": "pending",
+      "expected_output": "stdout JSON with count and streams",
+      "failure_policy": "If count is 0, keep state but recommend starting EDF->LSL stream and LSL parameter sweep.",
+      "exit_code": null,
+      "output_path": "",
+      "stdout_summary": "",
+      "output": "",
+      "error": ""
+    },
+    {
+      "step": "check_neuroskill_status",
+      "tool": "neuroskill_client.py",
+      "command": [
+        "C:\\Users\\shen\\anaconda3\\envs\\brainfusion\\python.exe",
+        "H:\\SCNU重要资料\\课题\\openbrainskill\\work\\neuroskill_client.py",
+        "status",
+        "--port",
+        "18444",
+        "--out",
+        "H:\\SCNU重要资料\\课题\\openbrainskill\\outputs_examples\\integration_v2\\agent_lsl_run\\neuroskill_status.json"
+      ],
+      "status": "pending",
+      "expected_output": "H:\\SCNU重要资料\\课题\\openbrainskill\\outputs_examples\\integration_v2\\agent_lsl_run\\neuroskill_status.json",
+      "failure_policy": "If daemon is unreachable, record JSON evidence and switch later to mne_baseline fallback.",
+      "exit_code": null,
+      "output_path": "H:\\SCNU重要资料\\课题\\openbrainskill\\outputs_examples\\integration_v2\\agent_lsl_run\\neuroskill_status.json",
+      "stdout_summary": "",
+      "output": "",
+      "error": ""
+    },
+    {
+      "step": "check_neuroskill_lsl_discover",
+      "tool": "neuroskill_client.py",
+      "command": [
+        "C:\\Users\\shen\\anaconda3\\envs\\brainfusion\\python.exe",
+        "H:\\SCNU重要资料\\课题\\openbrainskill\\work\\neuroskill_client.py",
+        "lsl-discover",
+        "--port",
+        "18444",
+        "--out",
+        "H:\\SCNU重要资料\\课题\\openbrainskill\\outputs_examples\\integration_v2\\agent_lsl_run\\neuroskill_lsl_discover.json"
+      ],
+      "status": "pending",
+      "expected_output": "H:\\SCNU重要资料\\课题\\openbrainskill\\outputs_examples\\integration_v2\\agent_lsl_run\\neuroskill_lsl_discover.json",
+      "failure_policy": "If NeuroSkill sees no LSL stream, write diagnosis and switch later to mne_baseline fallback.",
+      "exit_code": null,
+      "output_path": "H:\\SCNU重要资料\\课题\\openbrainskill\\outputs_examples\\integration_v2\\agent_lsl_run\\neuroskill_lsl_discover.json",
+      "stdout_summary": "",
+      "output": "",
+      "error": ""
+    },
+    {
+      "step": "evaluate",
+      "tool": "evaluate_sleep_staging.py",
+      "command": [
+        "C:\\Users\\shen\\anaconda3\\envs\\brainfusion\\python.exe",
+        "H:\\SCNU重要资料\\课题\\openbrainskill\\work\\evaluate_sleep_staging.py",
+        "--truth",
+        "H:\\SCNU重要资料\\课题\\openbrainskill\\outputs_examples\\integration_v2\\agent_lsl_run\\true_labels.csv",
+        "--pred",
+        "H:\\SCNU重要资料\\课题\\openbrainskill\\outputs_examples\\integration_v2\\agent_lsl_run\\pred_labels.csv",
+        "--out",
+        "H:\\SCNU重要资料\\课题\\openbrainskill\\outputs_examples\\integration_v2\\agent_lsl_run\\metrics.json"
+      ],
+      "status": "pending",
+      "expected_output": "H:\\SCNU重要资料\\课题\\openbrainskill\\outputs_examples\\integration_v2\\agent_lsl_run\\metrics.json",
+      "failure_policy": "Skip until true_labels.csv and pred_labels.csv both exist.",
+      "exit_code": null,
+      "output_path": "H:\\SCNU重要资料\\课题\\openbrainskill\\outputs_examples\\integration_v2\\agent_lsl_run\\metrics.json",
+      "stdout_summary": "",
+      "output": "",
+      "error": ""
+    },
+    {
+      "step": "generate_report",
+      "tool": "agent_reporter.py",
+      "command": [
+        "C:\\Users\\shen\\anaconda3\\envs\\brainfusion\\python.exe",
+        "H:\\SCNU重要资料\\课题\\openbrainskill\\work\\agent_reporter.py",
+        "--metrics",
+        "H:\\SCNU重要资料\\课题\\openbrainskill\\outputs_examples\\integration_v2\\agent_lsl_run\\metrics.json",
+        "--state",
+        "H:\\SCNU重要资料\\课题\\openbrainskill\\outputs_examples\\integration_v2\\agent_lsl_run\\agent_state.json",
+        "--out",
+        "H:\\SCNU重要资料\\课题\\openbrainskill\\outputs_examples\\integration_v2\\agent_lsl_run\\final_report.md"
+      ],
+      "status": "pending",
+      "expected_output": "H:\\SCNU重要资料\\课题\\openbrainskill\\outputs_examples\\integration_v2\\agent_lsl_run\\final_report.md",
+      "failure_policy": "Skip until metrics.json and agent_state.json exist.",
+      "exit_code": null,
+      "output_path": "H:\\SCNU重要资料\\课题\\openbrainskill\\outputs_examples\\integration_v2\\agent_lsl_run\\final_report.md",
+      "stdout_summary": "",
+      "output": "",
+      "error": ""
+    }
+  ]
+}

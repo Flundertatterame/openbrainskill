@@ -120,6 +120,23 @@ def run_command(command: list[str], cwd: Path) -> tuple[int, str, str]:
     return completed.returncode, completed.stdout, completed.stderr
 
 
+def start_lsl_process(command: list[str], run_dir: Path) -> tuple[subprocess.Popen[str], Any, Any]:
+    """Start the long-lived LSL outlet and retain its logs for the run."""
+    stdout_file = (run_dir / "lsl_stream.log").open("w", encoding="utf-8")
+    stderr_file = (run_dir / "lsl_stream.stderr.log").open("w", encoding="utf-8")
+    process = subprocess.Popen(command, cwd=str(run_dir), text=True, stdout=stdout_file, stderr=stderr_file)
+    return process, stdout_file, stderr_file
+
+
+def mark_lsl_stopped(state_path: Path) -> None:
+    """Avoid leaving a stale running status after Agent cleanup terminates the outlet."""
+    payload = read_json(state_path)
+    if payload.get("status") == "running":
+        payload["status"] = "stopped_by_agent"
+        payload["stopped_at"] = datetime.now().astimezone().isoformat(timespec="seconds")
+        write_json(state_path, payload)
+
+
 def summarize_text(text: str, max_lines: int = 8) -> str:
     """从一大段终端输出中提取前几行有效内容，便于写入状态摘要。"""
 
@@ -215,9 +232,42 @@ def build_tool_registry(args: argparse.Namespace, artifacts: dict[str, str]) -> 
                 str(ROOT / "lsl_resolve_check.py"),
                 "--seconds",
                 str(args.lsl_check_seconds),
+                "--out",
+                artifacts["lsl_discover"],
             ],
             expected_output="stdout JSON with count and streams",
             failure_policy="If count is 0, keep state but recommend starting EDF->LSL stream and LSL parameter sweep.",
+        ),
+        "start_lsl_stream": ToolSpec(
+            step="start_lsl_stream",
+            tool="edf_to_lsl_stream.py",
+            command=[
+                python,
+                "-u",
+                str(ROOT / "edf_to_lsl_stream.py"),
+                "--edf",
+                args.psg,
+                "--minutes",
+                str(args.lsl_minutes),
+                "--stream-name",
+                args.lsl_stream_name,
+                "--stream-type",
+                args.lsl_stream_type,
+                "--sample-rate",
+                str(args.lsl_sample_rate),
+                "--push-mode",
+                args.lsl_push_mode,
+                "--channel-policy",
+                args.lsl_channel_policy,
+                "--metadata-json-out",
+                artifacts["lsl_stream_metadata"],
+                "--state-json-out",
+                artifacts["lsl_stream_state"],
+                "--error-json-out",
+                artifacts["lsl_stream_error"],
+            ] + (["--source-id", args.lsl_source_id] if args.lsl_source_id else []) + (["--lsl-labels", args.lsl_labels] if args.lsl_labels else []),
+            expected_output=artifacts["lsl_stream_state"],
+            failure_policy="Inspect lsl_stream_error.json, then verify EDF input, channel policy, and the Python environment.",
         ),
         "check_neuroskill_status": ToolSpec(
             step="check_neuroskill_status",
@@ -306,6 +356,10 @@ def build_plan(args: argparse.Namespace, run_dir: Path) -> AgentState:
         "agent_state": str(run_dir / "agent_state.json"),
         "edf_check": str(run_dir / "edf_check.json"),
         "lsl_discover": str(run_dir / "lsl_discover.json"),
+        "lsl_stream_metadata": str(run_dir / "lsl_stream_metadata.json"),
+        "lsl_stream_state": str(run_dir / "lsl_stream_state.json"),
+        "lsl_stream_error": str(run_dir / "lsl_stream_error.json"),
+        "lsl_stream_log": str(run_dir / "lsl_stream.log"),
         "neuroskill_status": str(run_dir / "neuroskill_status.json"),
         "neuroskill_lsl_discover": str(run_dir / "neuroskill_lsl_discover.json"),
         "neuroskill_sleep": str(run_dir / "neuroskill_sleep.json"),
@@ -316,6 +370,9 @@ def build_plan(args: argparse.Namespace, run_dir: Path) -> AgentState:
     }
 
     task = build_structured_task(args)
+    for key in ("psg", "hypnogram"):
+        if task.get(key):
+            task[key] = str(Path(task[key]).resolve())
     args.psg = task["psg"]
     args.hypnogram = task["hypnogram"]
     args.backend = task["backend_requested"]
@@ -323,8 +380,9 @@ def build_plan(args: argparse.Namespace, run_dir: Path) -> AgentState:
     registry = build_tool_registry(args, artifacts)
     sequence = ["check_edf", "check_lsl_discovery", "evaluate", "generate_report"]
     if args.backend == "neuroskill_lsl":
-        sequence.insert(2, "check_neuroskill_status")
-        sequence.insert(3, "check_neuroskill_lsl_discover")
+        sequence.insert(1, "start_lsl_stream")
+        sequence.insert(3, "check_neuroskill_status")
+        sequence.insert(4, "check_neuroskill_lsl_discover")
     plan = [step_from_spec(registry[name]) for name in sequence]
 
     return AgentState(
@@ -465,7 +523,7 @@ def inspect_step_result(state: AgentState, step: Step) -> None:
             )
 
 
-def execute_plan(state: AgentState, run_dir: Path, execute: bool) -> AgentState:
+def execute_plan(state: AgentState, run_dir: Path, execute: bool, args: argparse.Namespace) -> AgentState:
     """按顺序执行计划中的步骤；如果是 dry-run，则只写计划不运行工具。"""
 
     state.status = "running" if execute else "planned"
@@ -481,55 +539,76 @@ def execute_plan(state: AgentState, run_dir: Path, execute: bool) -> AgentState:
         )
         return state
 
-    for step in state.plan:
-        if step.step == "evaluate":
-            if not Path(state.artifacts["truth_labels"]).exists() or not Path(state.artifacts["pred_labels"]).exists():
+    lsl_process: subprocess.Popen[str] | None = None
+    lsl_stdout: Any = None
+    lsl_stderr: Any = None
+    try:
+        for step in state.plan:
+            if step.step == "evaluate" and (
+                not Path(state.artifacts["truth_labels"]).exists()
+                or not Path(state.artifacts["pred_labels"]).exists()
+            ):
                 step.status = "skipped"
                 step.error = "truth_labels.csv or pred_labels.csv missing"
                 add_diagnosis(
-                    state,
-                    "warning",
-                    "Evaluation skipped because labels are missing.",
-                    step.error,
+                    state, "warning", "Evaluation skipped because labels are missing.", step.error,
                     "Generate true_labels.csv and pred_labels.csv, then rerun evaluation.",
                 )
                 continue
 
-        if step.step == "generate_report" and not Path(state.artifacts["metrics"]).exists():
-            step.status = "skipped"
-            step.error = "metrics.json missing"
-            add_diagnosis(
-                state,
-                "warning",
-                "Report generation skipped because metrics.json is missing.",
-                step.error,
-                "Run evaluation after labels are ready, then generate the final report.",
-            )
-            continue
+            if step.step == "generate_report" and not Path(state.artifacts["metrics"]).exists():
+                step.status = "skipped"
+                step.error = "metrics.json missing"
+                add_diagnosis(
+                    state, "warning", "Report generation skipped because metrics.json is missing.", step.error,
+                    "Run evaluation after labels are ready, then generate the final report.",
+                )
+                continue
 
-        step.status = "running"
-        code, stdout, stderr = run_command(step.command, cwd=run_dir)
-        step.exit_code = code
-        step.output = stdout[-4000:]
-        step.error = stderr[-4000:]
-        step.stdout_summary = summarize_text(stdout)
-        step.status = "completed" if code == 0 else "failed"
-        write_step_artifact(state, step)
-        inspect_step_result(state, step)
+            step.status = "running"
+            if step.step == "start_lsl_stream":
+                lsl_process, lsl_stdout, lsl_stderr = start_lsl_process(step.command, run_dir)
+                time.sleep(args.lsl_startup_wait_seconds)
+                if lsl_process.poll() is None:
+                    step.exit_code = 0
+                    step.output = json.dumps({"pid": lsl_process.pid, "state_path": state.artifacts["lsl_stream_state"]})
+                    step.stdout_summary = f"LSL stream process started (pid={lsl_process.pid})."
+                    step.status = "completed"
+                else:
+                    step.exit_code = lsl_process.returncode
+                    error_path = Path(state.artifacts["lsl_stream_error"])
+                    step.error = error_path.read_text(encoding="utf-8") if error_path.exists() else "LSL stream process exited before registration."
+                    step.status = "failed"
+            else:
+                code, stdout, stderr = run_command(step.command, cwd=run_dir)
+                step.exit_code = code
+                step.output = stdout[-4000:]
+                step.error = stderr[-4000:]
+                step.stdout_summary = summarize_text(stdout)
+                step.status = "completed" if code == 0 else "failed"
 
-        if step.status == "failed":
-            add_diagnosis(
-                state,
-                "error",
-                f"Step {step.step} failed.",
-                step.error or step.output,
-                diagnose_next_action(step.step),
-            )
-            if step.step in {"check_edf", "check_neuroskill_status", "check_neuroskill_lsl_discover"}:
-                if step.step == "check_edf":
-                    state.backend_effective = "mne_baseline"
-                state.status = "fallback"
-                break
+            write_step_artifact(state, step)
+            inspect_step_result(state, step)
+            if step.status == "failed":
+                add_diagnosis(state, "error", f"Step {step.step} failed.", step.error or step.output, diagnose_next_action(step.step))
+                if step.step in {"check_edf", "start_lsl_stream", "check_neuroskill_status", "check_neuroskill_lsl_discover"}:
+                    if step.step in {"check_edf", "start_lsl_stream"}:
+                        state.backend_effective = "mne_baseline"
+                    state.status = "fallback"
+                    break
+    finally:
+        if lsl_process is not None and lsl_process.poll() is None:
+            lsl_process.terminate()
+            try:
+                lsl_process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                lsl_process.kill()
+                lsl_process.wait()
+            mark_lsl_stopped(Path(state.artifacts["lsl_stream_state"]))
+        if lsl_stdout is not None:
+            lsl_stdout.close()
+        if lsl_stderr is not None:
+            lsl_stderr.close()
 
     if state.status not in {"fallback", "failed"}:
         failed = any(step.status == "failed" for step in state.plan)
@@ -566,6 +645,15 @@ def main() -> None:
     parser.add_argument("--run-dir", default="", help="Output run directory.")
     parser.add_argument("--execute", action="store_true", help="Actually execute available tool steps.")
     parser.add_argument("--lsl-check-seconds", type=float, default=5.0)
+    parser.add_argument("--lsl-minutes", type=float, default=10.0, help="Maximum lifetime for the Agent-managed LSL stream.")
+    parser.add_argument("--lsl-startup-wait-seconds", type=float, default=8.0, help="Wait time before checking the new LSL outlet.")
+    parser.add_argument("--lsl-stream-name", default="SleepEDF_LSL")
+    parser.add_argument("--lsl-stream-type", default="EEG")
+    parser.add_argument("--lsl-source-id", default="", help="Optional stable source_id; omit to generate one per run.")
+    parser.add_argument("--lsl-labels", default="", help="Optional comma-separated LSL labels; defaults to real EDF channel names.")
+    parser.add_argument("--lsl-sample-rate", type=float, default=256.0)
+    parser.add_argument("--lsl-push-mode", choices=["sample", "chunk"], default="chunk")
+    parser.add_argument("--lsl-channel-policy", choices=["strict", "duplicate"], default="strict")
     parser.add_argument("--neuroskill-port", type=int, default=18444)
     parser.add_argument("--python", default=r"C:\Users\shen\anaconda3\envs\brainfusion\python.exe", help="Python interpreter for subprocess calls (must have mne+pylsl).")
     args = parser.parse_args()
@@ -576,7 +664,7 @@ def main() -> None:
 
     state = build_plan(args, run_dir)
     write_json(Path(state.artifacts["agent_plan"]), {"plan": [step.__dict__ for step in state.plan]})
-    state = execute_plan(state, run_dir, args.execute)
+    state = execute_plan(state, run_dir, args.execute, args)
     write_json(Path(state.artifacts["agent_state"]), state.to_dict())
     print(json.dumps(state.to_dict(), indent=2, ensure_ascii=False))
 

@@ -1,0 +1,43 @@
+{
+  "component": "lsl_adapter",
+  "status": "stopped_by_agent",
+  "started_at": "2026-07-25T03:26:38.406397+00:00",
+  "command": [
+    "C:\\Users\\shen\\anaconda3\\envs\\brainfusion\\python.exe",
+    "H:\\SCNU重要资料\\课题\\openbrainskill\\work\\edf_to_lsl_stream.py",
+    "--edf",
+    "H:\\SCNU重要资料\\课题\\BrainFusion\\SleepEDF\\SC4001E0-PSG.edf",
+    "--minutes",
+    "1.0",
+    "--stream-name",
+    "SleepEDF_LSL",
+    "--stream-type",
+    "EEG",
+    "--sample-rate",
+    "256.0",
+    "--push-mode",
+    "chunk",
+    "--channel-policy",
+    "strict",
+    "--metadata-json-out",
+    "H:\\SCNU重要资料\\课题\\openbrainskill\\outputs_examples\\integration_v2\\agent_lsl_run\\lsl_stream_metadata.json",
+    "--state-json-out",
+    "H:\\SCNU重要资料\\课题\\openbrainskill\\outputs_examples\\integration_v2\\agent_lsl_run\\lsl_stream_state.json",
+    "--error-json-out",
+    "H:\\SCNU重要资料\\课题\\openbrainskill\\outputs_examples\\integration_v2\\agent_lsl_run\\lsl_stream_error.json"
+  ],
+  "config": {
+    "stream_name": "SleepEDF_LSL",
+    "stream_type": "EEG",
+    "source_id": "auto",
+    "labels": [],
+    "sample_rate": 256.0,
+    "minutes": 1.0,
+    "chunk_seconds": 0.125,
+    "push_mode": "chunk",
+    "channel_policy": "strict",
+    "input_layout": "auto",
+    "dry_run": false
+  },
+  "stopped_at": "2026-07-25T11:26:53+08:00"
+}

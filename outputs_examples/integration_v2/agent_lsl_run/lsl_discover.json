@@ -1,0 +1,13 @@
+{
+  "count": 1,
+  "streams": [
+    {
+      "name": "SleepEDF_LSL",
+      "type": "EEG",
+      "channel_count": 2,
+      "sample_rate": 256.0,
+      "source_id": "sleep-edf-sc4001e0-psg-4a8e0f10",
+      "hostname": "DESKTOP-GHNRSTF"
+    }
+  ]
+}

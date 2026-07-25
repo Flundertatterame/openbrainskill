@@ -1,0 +1,215 @@
+{
+  "run_id": "agent_lsl_run",
+  "request": "请对 SC4001E0 做睡眠分期并生成报告",
+  "backend": "neuroskill_lsl",
+  "backend_effective": "mne_baseline",
+  "task": {
+    "task": "sleep_staging",
+    "sample_id": "SC4001E0",
+    "backend_requested": "neuroskill_lsl",
+    "need_report": true,
+    "psg": "H:\\SCNU重要资料\\课题\\BrainFusion\\SleepEDF\\SC4001E0-PSG.edf",
+    "hypnogram": "H:\\SCNU重要资料\\课题\\BrainFusion\\SleepEDF\\SC4001EC-Hypnogram.edf"
+  },
+  "status": "fallback",
+  "inputs": {
+    "psg_edf": "H:\\SCNU重要资料\\课题\\BrainFusion\\SleepEDF\\SC4001E0-PSG.edf",
+    "hypnogram_edf": "H:\\SCNU重要资料\\课题\\BrainFusion\\SleepEDF\\SC4001EC-Hypnogram.edf"
+  },
+  "plan": [
+    {
+      "step": "check_edf",
+      "tool": "edf_to_lsl_stream.py",
+      "command": [
+        "C:\\Users\\shen\\anaconda3\\envs\\brainfusion\\python.exe",
+        "H:\\SCNU重要资料\\课题\\openbrainskill\\work\\edf_to_lsl_stream.py",
+        "--edf",
+        "H:\\SCNU重要资料\\课题\\BrainFusion\\SleepEDF\\SC4001E0-PSG.edf",
+        "--dry-run"
+      ],
+      "status": "completed",
+      "expected_output": "stdout contains selected EDF channels, LSL shape, and amplitude summary",
+      "failure_policy": "Stop NeuroSkill route and ask B line to fix PSG path/channel loading.",
+      "exit_code": 0,
+      "output_path": "",
+      "stdout_summary": "EDF channels selected: ['EEG Fpz-Cz', 'EEG Pz-Oz']\nData shape for LSL: channels=2, samples=7587840\nAmplitude median abs: 7.818 microvolts",
+      "output": "EDF channels selected: ['EEG Fpz-Cz', 'EEG Pz-Oz']\nData shape for LSL: channels=2, samples=7587840\nAmplitude median abs: 7.818 microvolts\n",
+      "error": "C:\\Users\\shen\\anaconda3\\envs\\brainfusion\\lib\\site-packages\\mne\\datasets\\eegbci\\eegbci.py:8: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.\n  import pkg_resources\nH:\\SCNU重要资料\\课题\\openbrainskill\\work\\edf_to_lsl_stream.py:88: RuntimeWarning: Number of records from the header does not match the file size (perhaps the recording was not stopped before exiting). Inferring from the file size.\n  raw = mne.io.read_raw_edf(str(edf_path), preload=True, verbose=False)\n"
+    },
+    {
+      "step": "start_lsl_stream",
+      "tool": "edf_to_lsl_stream.py",
+      "command": [
+        "C:\\Users\\shen\\anaconda3\\envs\\brainfusion\\python.exe",
+        "-u",
+        "H:\\SCNU重要资料\\课题\\openbrainskill\\work\\edf_to_lsl_stream.py",
+        "--edf",
+        "H:\\SCNU重要资料\\课题\\BrainFusion\\SleepEDF\\SC4001E0-PSG.edf",
+        "--minutes",
+        "1.0",
+        "--stream-name",
+        "SleepEDF_LSL",
+        "--stream-type",
+        "EEG",
+        "--sample-rate",
+        "256.0",
+        "--push-mode",
+        "chunk",
+        "--channel-policy",
+        "strict",
+        "--metadata-json-out",
+        "H:\\SCNU重要资料\\课题\\openbrainskill\\outputs_examples\\integration_v2\\agent_lsl_run\\lsl_stream_metadata.json",
+        "--state-json-out",
+        "H:\\SCNU重要资料\\课题\\openbrainskill\\outputs_examples\\integration_v2\\agent_lsl_run\\lsl_stream_state.json",
+        "--error-json-out",
+        "H:\\SCNU重要资料\\课题\\openbrainskill\\outputs_examples\\integration_v2\\agent_lsl_run\\lsl_stream_error.json"
+      ],
+      "status": "completed",
+      "expected_output": "H:\\SCNU重要资料\\课题\\openbrainskill\\outputs_examples\\integration_v2\\agent_lsl_run\\lsl_stream_state.json",
+      "failure_policy": "Inspect lsl_stream_error.json, then verify EDF input, channel policy, and the Python environment.",
+      "exit_code": 0,
+      "output_path": "H:\\SCNU重要资料\\课题\\openbrainskill\\outputs_examples\\integration_v2\\agent_lsl_run\\lsl_stream_state.json",
+      "stdout_summary": "LSL stream process started (pid=192).",
+      "output": "{\"pid\": 192, \"state_path\": \"H:\\\\SCNU\\u91cd\\u8981\\u8d44\\u6599\\\\\\u8bfe\\u9898\\\\openbrainskill\\\\outputs_examples\\\\integration_v2\\\\agent_lsl_run\\\\lsl_stream_state.json\"}",
+      "error": ""
+    },
+    {
+      "step": "check_lsl_discovery",
+      "tool": "lsl_resolve_check.py",
+      "command": [
+        "C:\\Users\\shen\\anaconda3\\envs\\brainfusion\\python.exe",
+        "H:\\SCNU重要资料\\课题\\openbrainskill\\work\\lsl_resolve_check.py",
+        "--seconds",
+        "3.0",
+        "--out",
+        "H:\\SCNU重要资料\\课题\\openbrainskill\\outputs_examples\\integration_v2\\agent_lsl_run\\lsl_discover.json"
+      ],
+      "status": "completed",
+      "expected_output": "stdout JSON with count and streams",
+      "failure_policy": "If count is 0, keep state but recommend starting EDF->LSL stream and LSL parameter sweep.",
+      "exit_code": 0,
+      "output_path": "",
+      "stdout_summary": "{\n\"count\": 1,\n\"streams\": [\n{\n\"name\": \"SleepEDF_LSL\",\n\"type\": \"EEG\",\n\"channel_count\": 2,\n\"sample_rate\": 256.0,",
+      "output": "{\n  \"count\": 1,\n  \"streams\": [\n    {\n      \"name\": \"SleepEDF_LSL\",\n      \"type\": \"EEG\",\n      \"channel_count\": 2,\n      \"sample_rate\": 256.0,\n      \"source_id\": \"sleep-edf-sc4001e0-psg-4a8e0f10\",\n      \"hostname\": \"DESKTOP-GHNRSTF\"\n    }\n  ]\n}\n",
+      "error": "2026-07-25 11:26:45.769 (   0.011s) [        C78FC444]      netinterfaces.cpp:36    INFO| netif '{02EF3F38-6739-4873-9227-67C87436915F}' (status: 2, multicast: 1\n2026-07-25 11:26:45.769 (   0.011s) [        C78FC444]      netinterfaces.cpp:36    INFO| netif '{6376158E-9A91-48F1-81B7-9AAD5BCAD8AD}' (status: 2, multicast: 1\n2026-07-25 11:26:45.769 (   0.011s) [        C78FC444]      netinterfaces.cpp:36    INFO| netif '{C14C615D-751C-4797-BD5C-FC661F23C6FB}' (status: 2, multicast: 1\n2026-07-25 11:26:45.769 (   0.011s) [        C78FC444]      netinterfaces.cpp:36    INFO| netif '{8E1498A5-FD43-46AA-9639-96D28828B6A0}' (status: 1, multicast: 1\n2026-07-25 11:26:45.769 (   0.011s) [        C78FC444]      netinterfaces.cpp:58    INFO| \tIPv6 ifindex 11\n2026-07-25 11:26:45.769 (   0.011s) [        C78FC444]      netinterfaces.cpp:36    INFO| netif '{90DE0ACD-8E2E-4E9E-88C0-6B2B870402AF}' (status: 2, multicast: 1\n2026-07-25 11:26:45.769 (   0.011s) [        C78FC444]      netinterfaces.cpp:36    INFO| netif '{BD78F3C3-0CC3-11ED-99D0-806E6F6E6963}' (status: 1, multicast: 1\n2026-07-25 11:26:45.769 (   0.011s) [        C78FC444]      netinterfaces.cpp:58    INFO| \tIPv6 ifindex 1\n2026-07-25 11:26:45.769 (   0.011s) [        C78FC444]         api_config.cpp:126   INFO| Loaded default config\n"
+    },
+    {
+      "step": "check_neuroskill_status",
+      "tool": "neuroskill_client.py",
+      "command": [
+        "C:\\Users\\shen\\anaconda3\\envs\\brainfusion\\python.exe",
+        "H:\\SCNU重要资料\\课题\\openbrainskill\\work\\neuroskill_client.py",
+        "status",
+        "--port",
+        "18444",
+        "--out",
+        "H:\\SCNU重要资料\\课题\\openbrainskill\\outputs_examples\\integration_v2\\agent_lsl_run\\neuroskill_status.json"
+      ],
+      "status": "failed",
+      "expected_output": "H:\\SCNU重要资料\\课题\\openbrainskill\\outputs_examples\\integration_v2\\agent_lsl_run\\neuroskill_status.json",
+      "failure_policy": "If daemon is unreachable, record JSON evidence and switch later to mne_baseline fallback.",
+      "exit_code": 1,
+      "output_path": "H:\\SCNU重要资料\\课题\\openbrainskill\\outputs_examples\\integration_v2\\agent_lsl_run\\neuroskill_status.json",
+      "stdout_summary": "{\n\"schema_version\": \"1.0\",\n\"command\": \"status\",\n\"timestamp\": \"2026-07-25T11:26:53+08:00\",\n\"ok\": false,\n\"url\": \"http://127.0.0.1:18444/\",\n\"response\": null,\n\"error\": {",
+      "output": "{\n  \"schema_version\": \"1.0\",\n  \"command\": \"status\",\n  \"timestamp\": \"2026-07-25T11:26:53+08:00\",\n  \"ok\": false,\n  \"url\": \"http://127.0.0.1:18444/\",\n  \"response\": null,\n  \"error\": {\n    \"type\": \"connection_error\",\n    \"message\": \"[WinError 10061] 由于目标计算机积极拒绝，无法连接。\"\n  },\n  \"attempts\": [\n    {\n      \"ok\": false,\n      \"method\": \"GET\",\n      \"url\": \"http://127.0.0.1:18444/v1/status\",\n      \"http_status\": null,\n      \"elapsed_ms\": 2012.4,\n      \"response\": null,\n      \"error\": {\n        \"type\": \"connection_error\",\n        \"message\": \"[WinError 10061] 由于目标计算机积极拒绝，无法连接。\"\n      }\n    },\n    {\n      \"ok\": false,\n      \"method\": \"POST\",\n      \"url\": \"http://127.0.0.1:18444/\",\n      \"http_status\": null,\n      \"elapsed_ms\": 2014.9,\n      \"response\": null,\n      \"error\": {\n        \"type\": \"connection_error\",\n        \"message\": \"[WinError 10061] 由于目标计算机积极拒绝，无法连接。\"\n      }\n    }\n  ]\n}\n",
+      "error": ""
+    },
+    {
+      "step": "check_neuroskill_lsl_discover",
+      "tool": "neuroskill_client.py",
+      "command": [
+        "C:\\Users\\shen\\anaconda3\\envs\\brainfusion\\python.exe",
+        "H:\\SCNU重要资料\\课题\\openbrainskill\\work\\neuroskill_client.py",
+        "lsl-discover",
+        "--port",
+        "18444",
+        "--out",
+        "H:\\SCNU重要资料\\课题\\openbrainskill\\outputs_examples\\integration_v2\\agent_lsl_run\\neuroskill_lsl_discover.json"
+      ],
+      "status": "pending",
+      "expected_output": "H:\\SCNU重要资料\\课题\\openbrainskill\\outputs_examples\\integration_v2\\agent_lsl_run\\neuroskill_lsl_discover.json",
+      "failure_policy": "If NeuroSkill sees no LSL stream, write diagnosis and switch later to mne_baseline fallback.",
+      "exit_code": null,
+      "output_path": "H:\\SCNU重要资料\\课题\\openbrainskill\\outputs_examples\\integration_v2\\agent_lsl_run\\neuroskill_lsl_discover.json",
+      "stdout_summary": "",
+      "output": "",
+      "error": ""
+    },
+    {
+      "step": "evaluate",
+      "tool": "evaluate_sleep_staging.py",
+      "command": [
+        "C:\\Users\\shen\\anaconda3\\envs\\brainfusion\\python.exe",
+        "H:\\SCNU重要资料\\课题\\openbrainskill\\work\\evaluate_sleep_staging.py",
+        "--truth",
+        "H:\\SCNU重要资料\\课题\\openbrainskill\\outputs_examples\\integration_v2\\agent_lsl_run\\true_labels.csv",
+        "--pred",
+        "H:\\SCNU重要资料\\课题\\openbrainskill\\outputs_examples\\integration_v2\\agent_lsl_run\\pred_labels.csv",
+        "--out",
+        "H:\\SCNU重要资料\\课题\\openbrainskill\\outputs_examples\\integration_v2\\agent_lsl_run\\metrics.json"
+      ],
+      "status": "pending",
+      "expected_output": "H:\\SCNU重要资料\\课题\\openbrainskill\\outputs_examples\\integration_v2\\agent_lsl_run\\metrics.json",
+      "failure_policy": "Skip until true_labels.csv and pred_labels.csv both exist.",
+      "exit_code": null,
+      "output_path": "H:\\SCNU重要资料\\课题\\openbrainskill\\outputs_examples\\integration_v2\\agent_lsl_run\\metrics.json",
+      "stdout_summary": "",
+      "output": "",
+      "error": ""
+    },
+    {
+      "step": "generate_report",
+      "tool": "agent_reporter.py",
+      "command": [
+        "C:\\Users\\shen\\anaconda3\\envs\\brainfusion\\python.exe",
+        "H:\\SCNU重要资料\\课题\\openbrainskill\\work\\agent_reporter.py",
+        "--metrics",
+        "H:\\SCNU重要资料\\课题\\openbrainskill\\outputs_examples\\integration_v2\\agent_lsl_run\\metrics.json",
+        "--state",
+        "H:\\SCNU重要资料\\课题\\openbrainskill\\outputs_examples\\integration_v2\\agent_lsl_run\\agent_state.json",
+        "--out",
+        "H:\\SCNU重要资料\\课题\\openbrainskill\\outputs_examples\\integration_v2\\agent_lsl_run\\final_report.md"
+      ],
+      "status": "pending",
+      "expected_output": "H:\\SCNU重要资料\\课题\\openbrainskill\\outputs_examples\\integration_v2\\agent_lsl_run\\final_report.md",
+      "failure_policy": "Skip until metrics.json and agent_state.json exist.",
+      "exit_code": null,
+      "output_path": "H:\\SCNU重要资料\\课题\\openbrainskill\\outputs_examples\\integration_v2\\agent_lsl_run\\final_report.md",
+      "stdout_summary": "",
+      "output": "",
+      "error": ""
+    }
+  ],
+  "artifacts": {
+    "agent_plan": "H:\\SCNU重要资料\\课题\\openbrainskill\\outputs_examples\\integration_v2\\agent_lsl_run\\agent_plan.json",
+    "agent_state": "H:\\SCNU重要资料\\课题\\openbrainskill\\outputs_examples\\integration_v2\\agent_lsl_run\\agent_state.json",
+    "edf_check": "H:\\SCNU重要资料\\课题\\openbrainskill\\outputs_examples\\integration_v2\\agent_lsl_run\\edf_check.json",
+    "lsl_discover": "H:\\SCNU重要资料\\课题\\openbrainskill\\outputs_examples\\integration_v2\\agent_lsl_run\\lsl_discover.json",
+    "lsl_stream_metadata": "H:\\SCNU重要资料\\课题\\openbrainskill\\outputs_examples\\integration_v2\\agent_lsl_run\\lsl_stream_metadata.json",
+    "lsl_stream_state": "H:\\SCNU重要资料\\课题\\openbrainskill\\outputs_examples\\integration_v2\\agent_lsl_run\\lsl_stream_state.json",
+    "lsl_stream_error": "H:\\SCNU重要资料\\课题\\openbrainskill\\outputs_examples\\integration_v2\\agent_lsl_run\\lsl_stream_error.json",
+    "lsl_stream_log": "H:\\SCNU重要资料\\课题\\openbrainskill\\outputs_examples\\integration_v2\\agent_lsl_run\\lsl_stream.log",
+    "neuroskill_status": "H:\\SCNU重要资料\\课题\\openbrainskill\\outputs_examples\\integration_v2\\agent_lsl_run\\neuroskill_status.json",
+    "neuroskill_lsl_discover": "H:\\SCNU重要资料\\课题\\openbrainskill\\outputs_examples\\integration_v2\\agent_lsl_run\\neuroskill_lsl_discover.json",
+    "neuroskill_sleep": "H:\\SCNU重要资料\\课题\\openbrainskill\\outputs_examples\\integration_v2\\agent_lsl_run\\neuroskill_sleep.json",
+    "truth_labels": "H:\\SCNU重要资料\\课题\\openbrainskill\\outputs_examples\\integration_v2\\agent_lsl_run\\true_labels.csv",
+    "pred_labels": "H:\\SCNU重要资料\\课题\\openbrainskill\\outputs_examples\\integration_v2\\agent_lsl_run\\pred_labels.csv",
+    "metrics": "H:\\SCNU重要资料\\课题\\openbrainskill\\outputs_examples\\integration_v2\\agent_lsl_run\\metrics.json",
+    "final_report": "H:\\SCNU重要资料\\课题\\openbrainskill\\outputs_examples\\integration_v2\\agent_lsl_run\\final_report.md"
+  },
+  "next_action": "Start NeuroSkill daemon/app and verify the port/token configuration.",
+  "diagnosis": [
+    {
+      "level": "warning",
+      "message": "NeuroSkill daemon is not reachable.",
+      "evidence": "{'type': 'connection_error', 'message': '[WinError 10061] 由于目标计算机积极拒绝，无法连接。'}",
+      "next_action": "Start NeuroSkill/daemon and confirm the port. Before it is fixed, continue with mne_baseline fallback."
+    },
+    {
+      "level": "error",
+      "message": "Step check_neuroskill_status failed.",
+      "evidence": "{\n  \"schema_version\": \"1.0\",\n  \"command\": \"status\",\n  \"timestamp\": \"2026-07-25T11:26:53+08:00\",\n  \"ok\": false,\n  \"url\": \"http://127.0.0.1:18444/\",\n  \"response\": null,\n  \"error\": {\n    \"type\": \"connection_error\",\n    \"message\": \"[WinError 10061] 由于目标计算机积极拒绝，无法连接。\"\n  },\n  \"attempts\": [\n    {\n      \"ok\": false,\n      \"method\": \"GET\",\n      \"url\": \"http://127.0.0.1:18444/v1/status\",\n      \"http_status\": null,\n      \"elapsed_ms\": 2012.4,\n      \"response\": null,\n      \"error\": {\n        \"type\": \"connection_error\",\n        \"message\": \"[WinError 10061] 由于目标计算机积极拒绝，无法连接。\"\n      }\n    },\n    {\n      \"ok\": false,\n      \"method\": \"POST\",\n      \"url\": \"http://127.0.0.1:18444/\",\n      \"http_status\": null,\n      \"elapsed_ms\": 2014.9,\n      \"response\": null,\n      \"error\": {\n        \"type\": \"connection_error\",\n        \"message\": \"[WinError 10061] 由于目标计算机积极拒绝，无法连接。\"\n      }\n    }\n  ]\n}\n",
+      "next_action": "Start NeuroSkill daemon/app and verify the port/token configuration."
+    }
+  ]
+}

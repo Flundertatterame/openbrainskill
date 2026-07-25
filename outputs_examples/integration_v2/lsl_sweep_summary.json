@@ -1,0 +1,242 @@
+{
+  "status": "completed",
+  "sweep_timestamp": "2026-07-25T03:28:06.836498+00:00",
+  "edf_path": "..\\BrainFusion\\SleepEDF\\SC4001E0-PSG.edf",
+  "stream_seconds_per_config": 2.0,
+  "discover_seconds_per_config": 1.0,
+  "startup_timeout_per_config": 20.0,
+  "total_configs": 5,
+  "successful_configs": 5,
+  "failed_configs": 0,
+  "total_duration_sec": 31.0,
+  "neuroskill_checked": true,
+  "neuroskill_port": 18444,
+  "neuroskill_successful_configs": 0,
+  "results": [
+    {
+      "label": "1ch_100Hz_SleepEDF_raw_sample",
+      "config": {
+        "label": "1ch_100Hz_SleepEDF_raw_sample",
+        "edf_channels": "EEG Fpz-Cz",
+        "lsl_labels": "EEG_Fpz_Cz",
+        "sample_rate": 100,
+        "stream_name": "Sweep_1ch_100Hz",
+        "push_mode": "sample",
+        "expected_channels": 1,
+        "channel_policy": "strict"
+      },
+      "attempted_at": "2026-07-25T03:28:06.836498+00:00",
+      "status": "success",
+      "source_id": "sweep-1ch_100hz_sleepedf_raw_sample-27310b64",
+      "stream_started": true,
+      "discover_success": true,
+      "stream_count_found": 1,
+      "matching_stream_count": 1,
+      "streams_found": [
+        {
+          "name": "Sweep_1ch_100Hz",
+          "type": "EEG",
+          "channel_count": 1,
+          "sample_rate": 100.0,
+          "source_id": "sweep-1ch_100hz_sleepedf_raw_sample-27310b64",
+          "hostname": "DESKTOP-GHNRSTF"
+        }
+      ],
+      "matched_stream": {
+        "name": "Sweep_1ch_100Hz",
+        "type": "EEG",
+        "channel_count": 1,
+        "sample_rate": 100.0,
+        "source_id": "sweep-1ch_100hz_sleepedf_raw_sample-27310b64",
+        "hostname": "DESKTOP-GHNRSTF"
+      },
+      "startup_timeout_sec": 20.0,
+      "startup_elapsed_sec": 3.01,
+      "error": "",
+      "duration_sec": 4.61,
+      "neuroskill_checked": true,
+      "neuroskill_discover_success": false,
+      "neuroskill_result_path": "outputs_examples\\integration_v2\\lsl_sweep_neuroskill\\1ch_100Hz_SleepEDF_raw_sample.json"
+    },
+    {
+      "label": "2ch_100Hz_SleepEDF_orig_sample",
+      "config": {
+        "label": "2ch_100Hz_SleepEDF_orig_sample",
+        "edf_channels": "EEG Fpz-Cz,EEG Pz-Oz",
+        "lsl_labels": "Fpz_Cz,Pz_Oz",
+        "sample_rate": 100,
+        "stream_name": "Sweep_2ch_100Hz",
+        "push_mode": "sample",
+        "expected_channels": 2,
+        "channel_policy": "strict"
+      },
+      "attempted_at": "2026-07-25T03:28:11.449292+00:00",
+      "status": "success",
+      "source_id": "sweep-2ch_100hz_sleepedf_orig_sample-5efd2b86",
+      "stream_started": true,
+      "discover_success": true,
+      "stream_count_found": 1,
+      "matching_stream_count": 1,
+      "streams_found": [
+        {
+          "name": "Sweep_2ch_100Hz",
+          "type": "EEG",
+          "channel_count": 2,
+          "sample_rate": 100.0,
+          "source_id": "sweep-2ch_100hz_sleepedf_orig_sample-5efd2b86",
+          "hostname": "DESKTOP-GHNRSTF"
+        }
+      ],
+      "matched_stream": {
+        "name": "Sweep_2ch_100Hz",
+        "type": "EEG",
+        "channel_count": 2,
+        "sample_rate": 100.0,
+        "source_id": "sweep-2ch_100hz_sleepedf_orig_sample-5efd2b86",
+        "hostname": "DESKTOP-GHNRSTF"
+      },
+      "startup_timeout_sec": 20.0,
+      "startup_elapsed_sec": 3.01,
+      "error": "",
+      "duration_sec": 4.59,
+      "neuroskill_checked": true,
+      "neuroskill_discover_success": false,
+      "neuroskill_result_path": "outputs_examples\\integration_v2\\lsl_sweep_neuroskill\\2ch_100Hz_SleepEDF_orig_sample.json"
+    },
+    {
+      "label": "4ch_256Hz_Muse_labels_sample",
+      "config": {
+        "label": "4ch_256Hz_Muse_labels_sample",
+        "edf_channels": "EEG Fpz-Cz,EEG Pz-Oz",
+        "lsl_labels": "TP9,AF7,AF8,TP10",
+        "sample_rate": 256,
+        "stream_name": "Sweep_4ch_256Hz",
+        "push_mode": "sample",
+        "expected_channels": 4,
+        "channel_policy": "duplicate"
+      },
+      "attempted_at": "2026-07-25T03:28:16.036359+00:00",
+      "status": "success",
+      "source_id": "sweep-4ch_256hz_muse_labels_sample-444aeee4",
+      "stream_started": true,
+      "discover_success": true,
+      "stream_count_found": 1,
+      "matching_stream_count": 1,
+      "streams_found": [
+        {
+          "name": "Sweep_4ch_256Hz",
+          "type": "EEG",
+          "channel_count": 4,
+          "sample_rate": 256.0,
+          "source_id": "sweep-4ch_256hz_muse_labels_sample-444aeee4",
+          "hostname": "DESKTOP-GHNRSTF"
+        }
+      ],
+      "matched_stream": {
+        "name": "Sweep_4ch_256Hz",
+        "type": "EEG",
+        "channel_count": 4,
+        "sample_rate": 256.0,
+        "source_id": "sweep-4ch_256hz_muse_labels_sample-444aeee4",
+        "hostname": "DESKTOP-GHNRSTF"
+      },
+      "startup_timeout_sec": 20.0,
+      "startup_elapsed_sec": 6.01,
+      "error": "",
+      "duration_sec": 7.62,
+      "neuroskill_checked": true,
+      "neuroskill_discover_success": false,
+      "neuroskill_result_path": "outputs_examples\\integration_v2\\lsl_sweep_neuroskill\\4ch_256Hz_Muse_labels_sample.json"
+    },
+    {
+      "label": "4ch_256Hz_Muse_labels_chunk",
+      "config": {
+        "label": "4ch_256Hz_Muse_labels_chunk",
+        "edf_channels": "EEG Fpz-Cz,EEG Pz-Oz",
+        "lsl_labels": "TP9,AF7,AF8,TP10",
+        "sample_rate": 256,
+        "stream_name": "Sweep_4ch_256Hz_chunk",
+        "push_mode": "chunk",
+        "expected_channels": 4,
+        "channel_policy": "duplicate"
+      },
+      "attempted_at": "2026-07-25T03:28:23.660527+00:00",
+      "status": "success",
+      "source_id": "sweep-4ch_256hz_muse_labels_chunk-70b918d4",
+      "stream_started": true,
+      "discover_success": true,
+      "stream_count_found": 1,
+      "matching_stream_count": 1,
+      "streams_found": [
+        {
+          "name": "Sweep_4ch_256Hz_chunk",
+          "type": "EEG",
+          "channel_count": 4,
+          "sample_rate": 256.0,
+          "source_id": "sweep-4ch_256hz_muse_labels_chunk-70b918d4",
+          "hostname": "DESKTOP-GHNRSTF"
+        }
+      ],
+      "matched_stream": {
+        "name": "Sweep_4ch_256Hz_chunk",
+        "type": "EEG",
+        "channel_count": 4,
+        "sample_rate": 256.0,
+        "source_id": "sweep-4ch_256hz_muse_labels_chunk-70b918d4",
+        "hostname": "DESKTOP-GHNRSTF"
+      },
+      "startup_timeout_sec": 20.0,
+      "startup_elapsed_sec": 6.01,
+      "error": "",
+      "duration_sec": 7.59,
+      "neuroskill_checked": true,
+      "neuroskill_discover_success": false,
+      "neuroskill_result_path": "outputs_examples\\integration_v2\\lsl_sweep_neuroskill\\4ch_256Hz_Muse_labels_chunk.json"
+    },
+    {
+      "label": "4ch_128Hz_Muse_labels_sample",
+      "config": {
+        "label": "4ch_128Hz_Muse_labels_sample",
+        "edf_channels": "EEG Fpz-Cz,EEG Pz-Oz",
+        "lsl_labels": "TP9,AF7,AF8,TP10",
+        "sample_rate": 128,
+        "stream_name": "Sweep_4ch_128Hz",
+        "push_mode": "sample",
+        "expected_channels": 4,
+        "channel_policy": "duplicate"
+      },
+      "attempted_at": "2026-07-25T03:28:31.252242+00:00",
+      "status": "success",
+      "source_id": "sweep-4ch_128hz_muse_labels_sample-48738dd4",
+      "stream_started": true,
+      "discover_success": true,
+      "stream_count_found": 1,
+      "matching_stream_count": 1,
+      "streams_found": [
+        {
+          "name": "Sweep_4ch_128Hz",
+          "type": "EEG",
+          "channel_count": 4,
+          "sample_rate": 128.0,
+          "source_id": "sweep-4ch_128hz_muse_labels_sample-48738dd4",
+          "hostname": "DESKTOP-GHNRSTF"
+        }
+      ],
+      "matched_stream": {
+        "name": "Sweep_4ch_128Hz",
+        "type": "EEG",
+        "channel_count": 4,
+        "sample_rate": 128.0,
+        "source_id": "sweep-4ch_128hz_muse_labels_sample-48738dd4",
+        "hostname": "DESKTOP-GHNRSTF"
+      },
+      "startup_timeout_sec": 20.0,
+      "startup_elapsed_sec": 5.01,
+      "error": "",
+      "duration_sec": 6.59,
+      "neuroskill_checked": true,
+      "neuroskill_discover_success": false,
+      "neuroskill_result_path": "outputs_examples\\integration_v2\\lsl_sweep_neuroskill\\4ch_128Hz_Muse_labels_sample.json"
+    }
+  ]
+}

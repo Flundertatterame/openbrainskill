@@ -1,0 +1,17 @@
+{
+  "component": "lsl_adapter",
+  "status": "failed",
+  "failed_at": "2026-07-25T03:25:50.092778+00:00",
+  "command": [
+    "C:\\Users\\shen\\anaconda3\\envs\\brainfusion\\python.exe",
+    "work\\edf_to_lsl_stream.py",
+    "--from-csv",
+    "..\\BrainFusion\\output\\SC4001E0_FpzCz_features.csv",
+    "--dry-run",
+    "--error-json-out",
+    ".\\outputs_examples\\integration_v2\\features_error.json"
+  ],
+  "error_type": "ValueError",
+  "message": "CSV appears to contain epoch features rather than raw EEG waveform (found columns: alpha, beta, delta, epoch, gamma, theta). Use mne_baseline for features.csv.",
+  "command_hint": "Check the input format, channel labels, and numeric stream parameters, then rerun with --dry-run."
+}

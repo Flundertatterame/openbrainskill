@@ -26,7 +26,8 @@
         "name": "SleepEDF_LSL",
         "type": "EEG",
         "sample_rate": 256,
-        "channel_labels": ["TP9", "AF7", "AF8", "TP10"],
+        "channel_labels": ["EEG Fpz-Cz", "EEG Pz-Oz"],
+        "channel_policy": "strict",
         "unit": "microvolts"
       }
     },
@@ -37,6 +38,11 @@
     }
   },
   "outputs": {
+    "lsl_adapter": {
+      "type": "object",
+      "description": "EDF/array waveform to LSL adapter artifacts.",
+      "fields": ["lsl_stream_metadata.json", "lsl_stream_state.json", "lsl_stream_error.json", "lsl_stream.log", "lsl_discover.json"]
+    },
     "predicted_epochs": {
       "type": "file",
       "description": "Predicted sleep stages with timestamps."
@@ -56,6 +62,19 @@
     "2": "N2",
     "3": "N3",
     "4": "REM"
+  },
+  "lsl_adapter_input_contract": {
+    "waveform_required": true,
+    "accepted_sources": {
+      "edf": "PSG EDF EEG channels.",
+      "npy": "Waveform array with layout declared as channels-samples, epochs-samples, or epochs-channels-samples.",
+      "csv": "Raw waveform CSV where columns are channel samples. Feature tables are rejected."
+    },
+    "rejected_feature_columns": ["delta", "theta", "alpha", "beta", "gamma", "sleep_stage", "stage", "epoch"],
+    "channel_policy": {
+      "strict": "LSL labels must equal the number of physical waveform channels.",
+      "duplicate": "Allowed only for compatibility experiments; metadata must declare channel_mapping and synthetic_channel_duplication."
+    }
   },
   "risk_policy": {
     "neuroskill_lsl_blocked_after_days": 4,

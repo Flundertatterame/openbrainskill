@@ -1,0 +1,214 @@
+{
+  "status": "completed",
+  "sweep_timestamp": "2026-07-25T03:09:03.906040+00:00",
+  "edf_path": "..\\BrainFusion\\SleepEDF\\SC4001E0-PSG.edf",
+  "stream_seconds_per_config": 2.0,
+  "discover_seconds_per_config": 1.0,
+  "startup_timeout_per_config": 20.0,
+  "total_configs": 5,
+  "successful_configs": 5,
+  "failed_configs": 0,
+  "total_duration_sec": 27.21,
+  "results": [
+    {
+      "label": "1ch_100Hz_SleepEDF_raw_sample",
+      "config": {
+        "label": "1ch_100Hz_SleepEDF_raw_sample",
+        "edf_channels": "EEG Fpz-Cz",
+        "lsl_labels": "EEG_Fpz_Cz",
+        "sample_rate": 100,
+        "stream_name": "Sweep_1ch_100Hz",
+        "push_mode": "sample",
+        "expected_channels": 1
+      },
+      "attempted_at": "2026-07-25T03:09:03.906040+00:00",
+      "status": "success",
+      "stream_started": true,
+      "discover_success": true,
+      "stream_count_found": 1,
+      "matching_stream_count": 1,
+      "streams_found": [
+        {
+          "name": "Sweep_1ch_100Hz",
+          "type": "EEG",
+          "channel_count": 1,
+          "sample_rate": 100.0,
+          "source_id": "sleep-edf-lsl-001",
+          "hostname": "DESKTOP-GHNRSTF"
+        }
+      ],
+      "matched_stream": {
+        "name": "Sweep_1ch_100Hz",
+        "type": "EEG",
+        "channel_count": 1,
+        "sample_rate": 100.0,
+        "source_id": "sleep-edf-lsl-001",
+        "hostname": "DESKTOP-GHNRSTF"
+      },
+      "startup_timeout_sec": 20.0,
+      "startup_elapsed_sec": 3.01,
+      "error": "",
+      "duration_sec": 4.07
+    },
+    {
+      "label": "2ch_100Hz_SleepEDF_orig_sample",
+      "config": {
+        "label": "2ch_100Hz_SleepEDF_orig_sample",
+        "edf_channels": "EEG Fpz-Cz,EEG Pz-Oz",
+        "lsl_labels": "Fpz_Cz,Pz_Oz",
+        "sample_rate": 100,
+        "stream_name": "Sweep_2ch_100Hz",
+        "push_mode": "sample",
+        "expected_channels": 2
+      },
+      "attempted_at": "2026-07-25T03:09:07.974771+00:00",
+      "status": "success",
+      "stream_started": true,
+      "discover_success": true,
+      "stream_count_found": 1,
+      "matching_stream_count": 1,
+      "streams_found": [
+        {
+          "name": "Sweep_2ch_100Hz",
+          "type": "EEG",
+          "channel_count": 2,
+          "sample_rate": 100.0,
+          "source_id": "sleep-edf-lsl-001",
+          "hostname": "DESKTOP-GHNRSTF"
+        }
+      ],
+      "matched_stream": {
+        "name": "Sweep_2ch_100Hz",
+        "type": "EEG",
+        "channel_count": 2,
+        "sample_rate": 100.0,
+        "source_id": "sleep-edf-lsl-001",
+        "hostname": "DESKTOP-GHNRSTF"
+      },
+      "startup_timeout_sec": 20.0,
+      "startup_elapsed_sec": 3.0,
+      "error": "",
+      "duration_sec": 4.01
+    },
+    {
+      "label": "4ch_256Hz_Muse_labels_sample",
+      "config": {
+        "label": "4ch_256Hz_Muse_labels_sample",
+        "edf_channels": "EEG Fpz-Cz,EEG Pz-Oz",
+        "lsl_labels": "TP9,AF7,AF8,TP10",
+        "sample_rate": 256,
+        "stream_name": "Sweep_4ch_256Hz",
+        "push_mode": "sample",
+        "expected_channels": 4
+      },
+      "attempted_at": "2026-07-25T03:09:11.989370+00:00",
+      "status": "success",
+      "stream_started": true,
+      "discover_success": true,
+      "stream_count_found": 1,
+      "matching_stream_count": 1,
+      "streams_found": [
+        {
+          "name": "Sweep_4ch_256Hz",
+          "type": "EEG",
+          "channel_count": 4,
+          "sample_rate": 256.0,
+          "source_id": "sleep-edf-lsl-001",
+          "hostname": "DESKTOP-GHNRSTF"
+        }
+      ],
+      "matched_stream": {
+        "name": "Sweep_4ch_256Hz",
+        "type": "EEG",
+        "channel_count": 4,
+        "sample_rate": 256.0,
+        "source_id": "sleep-edf-lsl-001",
+        "hostname": "DESKTOP-GHNRSTF"
+      },
+      "startup_timeout_sec": 20.0,
+      "startup_elapsed_sec": 6.01,
+      "error": "",
+      "duration_sec": 7.07
+    },
+    {
+      "label": "4ch_256Hz_Muse_labels_chunk",
+      "config": {
+        "label": "4ch_256Hz_Muse_labels_chunk",
+        "edf_channels": "EEG Fpz-Cz,EEG Pz-Oz",
+        "lsl_labels": "TP9,AF7,AF8,TP10",
+        "sample_rate": 256,
+        "stream_name": "Sweep_4ch_256Hz_chunk",
+        "push_mode": "chunk",
+        "expected_channels": 4
+      },
+      "attempted_at": "2026-07-25T03:09:19.054075+00:00",
+      "status": "success",
+      "stream_started": true,
+      "discover_success": true,
+      "stream_count_found": 1,
+      "matching_stream_count": 1,
+      "streams_found": [
+        {
+          "name": "Sweep_4ch_256Hz_chunk",
+          "type": "EEG",
+          "channel_count": 4,
+          "sample_rate": 256.0,
+          "source_id": "sleep-edf-lsl-001",
+          "hostname": "DESKTOP-GHNRSTF"
+        }
+      ],
+      "matched_stream": {
+        "name": "Sweep_4ch_256Hz_chunk",
+        "type": "EEG",
+        "channel_count": 4,
+        "sample_rate": 256.0,
+        "source_id": "sleep-edf-lsl-001",
+        "hostname": "DESKTOP-GHNRSTF"
+      },
+      "startup_timeout_sec": 20.0,
+      "startup_elapsed_sec": 6.01,
+      "error": "",
+      "duration_sec": 7.02
+    },
+    {
+      "label": "4ch_128Hz_Muse_labels_sample",
+      "config": {
+        "label": "4ch_128Hz_Muse_labels_sample",
+        "edf_channels": "EEG Fpz-Cz,EEG Pz-Oz",
+        "lsl_labels": "TP9,AF7,AF8,TP10",
+        "sample_rate": 128,
+        "stream_name": "Sweep_4ch_128Hz",
+        "push_mode": "sample",
+        "expected_channels": 4
+      },
+      "attempted_at": "2026-07-25T03:09:26.071837+00:00",
+      "status": "success",
+      "stream_started": true,
+      "discover_success": true,
+      "stream_count_found": 1,
+      "matching_stream_count": 1,
+      "streams_found": [
+        {
+          "name": "Sweep_4ch_128Hz",
+          "type": "EEG",
+          "channel_count": 4,
+          "sample_rate": 128.0,
+          "source_id": "sleep-edf-lsl-001",
+          "hostname": "DESKTOP-GHNRSTF"
+        }
+      ],
+      "matched_stream": {
+        "name": "Sweep_4ch_128Hz",
+        "type": "EEG",
+        "channel_count": 4,
+        "sample_rate": 128.0,
+        "source_id": "sleep-edf-lsl-001",
+        "hostname": "DESKTOP-GHNRSTF"
+      },
+      "startup_timeout_sec": 20.0,
+      "startup_elapsed_sec": 4.01,
+      "error": "",
+      "duration_sec": 5.04
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "component": "lsl_adapter",
+  "status": "failed",
+  "failed_at": "2026-07-25T03:08:09.213022+00:00",
+  "command": [
+    "C:\\Users\\shen\\anaconda3\\envs\\brainfusion\\python.exe",
+    "work\\edf_to_lsl_stream.py",
+    "--edf",
+    ".\\missing.edf",
+    "--state-json-out",
+    ".\\outputs_examples\\sbh_day14_missing_path_state.json",
+    "--error-json-out",
+    ".\\outputs_examples\\sbh_day14_missing_path_error.json"
+  ],
+  "error_type": "FileNotFoundError",
+  "message": "EDF file not found: missing.edf",
+  "command_hint": "Verify the input path and pass exactly one of --edf, --from-npy, or --from-csv."
+}

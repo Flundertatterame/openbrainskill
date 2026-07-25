@@ -15,6 +15,7 @@ import json
 import subprocess
 import sys
 import time
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -27,6 +28,7 @@ SWEEP_CONFIGS: list[dict] = [
         "stream_name": "Sweep_1ch_100Hz",
         "push_mode": "sample",
         "expected_channels": 1,
+        "channel_policy": "strict",
     },
     {
         "label": "2ch_100Hz_SleepEDF_orig_sample",
@@ -36,6 +38,7 @@ SWEEP_CONFIGS: list[dict] = [
         "stream_name": "Sweep_2ch_100Hz",
         "push_mode": "sample",
         "expected_channels": 2,
+        "channel_policy": "strict",
     },
     {
         "label": "4ch_256Hz_Muse_labels_sample",
@@ -45,6 +48,7 @@ SWEEP_CONFIGS: list[dict] = [
         "stream_name": "Sweep_4ch_256Hz",
         "push_mode": "sample",
         "expected_channels": 4,
+        "channel_policy": "duplicate",
     },
     {
         "label": "4ch_256Hz_Muse_labels_chunk",
@@ -54,6 +58,7 @@ SWEEP_CONFIGS: list[dict] = [
         "stream_name": "Sweep_4ch_256Hz_chunk",
         "push_mode": "chunk",
         "expected_channels": 4,
+        "channel_policy": "duplicate",
     },
     {
         "label": "4ch_128Hz_Muse_labels_sample",
@@ -63,6 +68,7 @@ SWEEP_CONFIGS: list[dict] = [
         "stream_name": "Sweep_4ch_128Hz",
         "push_mode": "sample",
         "expected_channels": 4,
+        "channel_policy": "duplicate",
     },
 ]
 
@@ -143,6 +149,9 @@ def run_one_sweep(
     discover_seconds: float,
     startup_timeout: float,
     python_exe: str,
+    neuroskill_port: int | None,
+    neuroskill_timeout: float,
+    neuroskill_dir: Path,
 ) -> dict:
     """Start a LSL stream in background, discover it, then kill the stream."""
     label = config["label"]
@@ -151,6 +160,7 @@ def run_one_sweep(
 
     script_dir = Path(__file__).resolve().parent
     edf_script = script_dir / "edf_to_lsl_stream.py"
+    source_id = f"sweep-{label.lower()}-{uuid.uuid4().hex[:8]}"
 
     cmd = [
         python_exe,
@@ -160,6 +170,8 @@ def run_one_sweep(
         "--lsl-labels", config["lsl_labels"],
         "--sample-rate", str(config["sample_rate"]),
         "--stream-name", stream_name,
+        "--source-id", source_id,
+        "--channel-policy", config["channel_policy"],
         "--minutes", str(stream_seconds / 60.0),
         "--push-mode", config["push_mode"],
     ]
@@ -168,6 +180,8 @@ def run_one_sweep(
         "label": label,
         "config": config,
         "attempted_at": datetime.now(timezone.utc).isoformat(),
+        "status": "failed",
+        "source_id": source_id,
         "stream_started": False,
         "discover_success": False,
         "stream_count_found": 0,
@@ -178,6 +192,9 @@ def run_one_sweep(
         "startup_elapsed_sec": 0.0,
         "error": "",
         "duration_sec": 0.0,
+        "neuroskill_checked": neuroskill_port is not None,
+        "neuroskill_discover_success": None,
+        "neuroskill_result_path": "",
     }
 
     proc = None
@@ -212,6 +229,7 @@ def run_one_sweep(
         else:
             result["stream_started"] = True
             result["discover_success"] = True
+            result["status"] = "success"
             result["matched_stream"] = matched
 
         # Discover again after startup so the result also captures nearby streams
@@ -231,6 +249,29 @@ def run_one_sweep(
         result["discover_success"] = len(matching) > 0
         if matching:
             result["matched_stream"] = matching[0]
+            result["status"] = "success"
+
+        if neuroskill_port is not None:
+            client_script = script_dir / "neuroskill_client.py"
+            result_path = neuroskill_dir / f"{label}.json"
+            client_cmd = [
+                python_exe, str(client_script), "lsl-discover",
+                "--port", str(neuroskill_port),
+                "--timeout", str(neuroskill_timeout),
+                "--out", str(result_path),
+            ]
+            completed = subprocess.run(client_cmd, text=True, capture_output=True, check=False)
+            result["neuroskill_result_path"] = str(result_path)
+            if result_path.exists():
+                try:
+                    neuroskill_result = json.loads(result_path.read_text(encoding="utf-8"))
+                    result["neuroskill_discover_success"] = bool(neuroskill_result.get("ok", False))
+                except json.JSONDecodeError:
+                    result["neuroskill_discover_success"] = False
+                    result["error"] = f"NeuroSkill produced invalid JSON: {completed.stderr[-300:]}"
+            else:
+                result["neuroskill_discover_success"] = False
+                result["error"] = f"NeuroSkill client did not produce output (rc={completed.returncode}): {completed.stderr[-300:]}"
 
     except Exception as exc:
         result["error"] = f"{type(exc).__name__}: {exc}"
@@ -252,20 +293,48 @@ def run_one_sweep(
 def main() -> None:
     parser = argparse.ArgumentParser(description="Sweep LSL stream parameters and record discover results.")
     parser.add_argument("--edf", required=True, help="Path to PSG EDF to use for streaming.")
-    parser.add_argument("--out", default="outputs/runs/day10/lsl_param_sweep_results.json", help="Output JSON path.")
+    parser.add_argument(
+        "--out",
+        default="outputs/runs/day15/lsl_sweep_summary.json",
+        help="Output JSON summary path.",
+    )
     parser.add_argument("--stream-seconds", type=float, default=15.0, help="Seconds to stream per config.")
     parser.add_argument("--discover-seconds", type=float, default=5.0, help="Seconds to discover after stream starts.")
     parser.add_argument("--startup-timeout", type=float, default=30.0, help="Seconds to wait for EDF loading and LSL registration.")
     parser.add_argument("--python", default=r"C:\Users\shen\anaconda3\envs\brainfusion\python.exe", help="Python interpreter to use for subprocess.")
+    parser.add_argument("--neuroskill-port", type=int, default=None, help="Optionally test NeuroSkill LSL discovery for every running sweep stream.")
+    parser.add_argument("--neuroskill-timeout", type=float, default=3.0, help="Per-config NeuroSkill discovery timeout in seconds.")
     args = parser.parse_args()
 
     edf_path = Path(args.edf)
     if not edf_path.exists():
+        summary = {
+            "status": "failed",
+            "sweep_timestamp": datetime.now(timezone.utc).isoformat(),
+            "edf_path": str(edf_path),
+            "total_configs": len(SWEEP_CONFIGS),
+            "successful_configs": 0,
+            "failed_configs": len(SWEEP_CONFIGS),
+            "total_duration_sec": 0.0,
+            "error": {
+                "error_type": "FileNotFoundError",
+                "message": f"EDF file not found: {edf_path}",
+                "command_hint": "Pass an existing PSG EDF path to --edf.",
+            },
+            "results": [],
+        }
+        out_path = Path(args.out)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(json.dumps(summary, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
         print(f"ERROR: EDF file not found: {edf_path}")
+        print(f"Failure summary written to: {out_path}")
         sys.exit(1)
 
     timestamp = datetime.now(timezone.utc).isoformat()
     results: list[dict] = []
+    neuroskill_dir = Path(args.out).parent / "lsl_sweep_neuroskill"
+    if args.neuroskill_port is not None:
+        neuroskill_dir.mkdir(parents=True, exist_ok=True)
 
     print(f"Running {len(SWEEP_CONFIGS)} LSL parameter sweep(s) on {edf_path.name}")
     print(
@@ -284,6 +353,9 @@ def main() -> None:
             args.discover_seconds,
             args.startup_timeout,
             args.python,
+            args.neuroskill_port,
+            args.neuroskill_timeout,
+            neuroskill_dir,
         )
         results.append(result)
 
@@ -297,6 +369,7 @@ def main() -> None:
 
     # Build summary.
     summary: dict = {
+        "status": "completed",
         "sweep_timestamp": timestamp,
         "edf_path": str(edf_path),
         "stream_seconds_per_config": args.stream_seconds,
@@ -304,6 +377,11 @@ def main() -> None:
         "startup_timeout_per_config": args.startup_timeout,
         "total_configs": len(SWEEP_CONFIGS),
         "successful_configs": sum(1 for r in results if r["discover_success"]),
+        "failed_configs": sum(1 for r in results if not r["discover_success"]),
+        "total_duration_sec": round(sum(float(r["duration_sec"]) for r in results), 2),
+        "neuroskill_checked": args.neuroskill_port is not None,
+        "neuroskill_port": args.neuroskill_port,
+        "neuroskill_successful_configs": sum(1 for r in results if r["neuroskill_discover_success"] is True),
         "results": results,
     }
 
