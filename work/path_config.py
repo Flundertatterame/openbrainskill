@@ -73,10 +73,17 @@ def resolve_sample_paths(sample_id, config_file):
         sample_id
 )
 
+    output_root = Path(
+    config["output_root"]
+)
+
+
     truth_file = (
-        output_dir
+        output_root
         /
-        "true_labels.csv"
+        sample_id
+        /
+        config["truth_file"]
     )
 
     return {

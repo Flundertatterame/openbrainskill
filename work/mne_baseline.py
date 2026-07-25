@@ -42,6 +42,7 @@ import os
 import numpy as np
 import pandas as pd
 import mne
+import subprocess
 
 from scipy.signal import welch
 
@@ -489,6 +490,53 @@ def main():
             )
 
             truth_path = paths["truth"]
+
+
+            # ==========================
+            # 检查 true_labels.csv
+            # ==========================
+
+            if not os.path.exists(truth_path):
+
+                print(
+                    "Missing truth file:",
+                    truth_path
+                )
+
+                print(
+                    "Generating true_labels.csv..."
+                )
+
+
+                hypnogram_path = paths["hypnogram"]
+
+
+                cmd = [
+                    "python",
+                    "work/extract_sleep_edf_labels.py",
+                    "--hypnogram",
+                    hypnogram_path,
+                    "--out",
+                    truth_path
+                ]
+
+
+                result = subprocess.run(cmd)
+
+
+                if result.returncode != 0:
+
+                    raise RuntimeError(
+                        "Failed to generate true_labels.csv"
+                    )
+
+
+            else:
+
+                print(
+                    "Found truth:",
+                    truth_path
+                )
 
             pred_path = os.path.join(
                 output_dir,
