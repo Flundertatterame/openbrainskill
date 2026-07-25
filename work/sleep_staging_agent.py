@@ -9,10 +9,10 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
-import time
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -114,9 +114,24 @@ def parse_json_text(text: str) -> dict[str, Any]:
 
 
 def run_command(command: list[str], cwd: Path) -> tuple[int, str, str]:
-    """像在终端里一样运行一条命令，并返回退出码、标准输出和错误输出。"""
+    """以 UTF-8 运行工具，并返回退出码、标准输出和错误输出。
 
-    completed = subprocess.run(command, cwd=str(cwd), text=True, capture_output=True, check=False)
+    Windows 的非 UTF-8 控制台会让含中文日志的 Python 工具在 print 时崩溃；
+    因此 Agent 在进程边界统一设置编码，工具本身无需依赖用户终端代码页。
+    """
+
+    env = os.environ.copy()
+    env["PYTHONIOENCODING"] = "utf-8"
+    completed = subprocess.run(
+        command,
+        cwd=str(cwd),
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        capture_output=True,
+        check=False,
+        env=env,
+    )
     return completed.returncode, completed.stdout, completed.stderr
 
 
@@ -142,6 +157,18 @@ def load_task_json(path: str) -> dict[str, Any]:
     return read_json(Path(path))
 
 
+def normalize_input_path(value: str) -> str:
+    """把用户输入文件统一解析为绝对路径，空值保持为空。
+
+    Agent 会在 run 目录中启动工具；提前规范化路径可避免相对路径被子进程
+    错误地解释成 ``run_dir/relative/path``。相对路径以启动 Agent 的目录为准。
+    """
+
+    if not value:
+        return ""
+    return str(Path(value).expanduser().resolve())
+
+
 def build_structured_task(args: argparse.Namespace) -> dict[str, Any]:
     """把命令行参数或 task-json 统一整理成 Agent 内部使用的结构化任务。"""
 
@@ -152,8 +179,8 @@ def build_structured_task(args: argparse.Namespace) -> dict[str, Any]:
             "sample_id": task.get("sample_id", extract_sample_id(args.request)),
             "backend_requested": task.get("backend", args.backend),
             "need_report": task.get("need_report", True),
-            "psg": task.get("psg", args.psg or ""),
-            "hypnogram": task.get("hypnogram", args.hypnogram or ""),
+            "psg": normalize_input_path(task.get("psg", args.psg or "")),
+            "hypnogram": normalize_input_path(task.get("hypnogram", args.hypnogram or "")),
         }
 
     return {
@@ -161,8 +188,8 @@ def build_structured_task(args: argparse.Namespace) -> dict[str, Any]:
         "sample_id": extract_sample_id(args.request),
         "backend_requested": args.backend,
         "need_report": True,
-        "psg": args.psg or "",
-        "hypnogram": args.hypnogram or "",
+        "psg": normalize_input_path(args.psg or ""),
+        "hypnogram": normalize_input_path(args.hypnogram or ""),
     }
 
 
@@ -189,23 +216,72 @@ def get_stream_count(payload: dict[str, Any]) -> int | None:
 
 
 def build_tool_registry(args: argparse.Namespace, artifacts: dict[str, str]) -> dict[str, ToolSpec]:
-    """建立工具注册表：告诉 Agent 每个步骤要调用哪个脚本和输出到哪里。"""
+    """建立工具注册表。
+
+    每个 ToolSpec 都明确声明命令输入、预期输出和失败策略。第三周期的
+    baseline 路线只使用离线 EDF/CSV 文件，不依赖 LSL 或 NeuroSkill。
+    """
 
     python = args.python
 
     return {
         "check_edf": ToolSpec(
             step="check_edf",
-            tool="edf_to_lsl_stream.py",
+            tool="check_sleep_edf.py",
             command=[
                 python,
-                str(ROOT / "edf_to_lsl_stream.py"),
+                str(ROOT / "check_sleep_edf.py"),
                 "--edf",
                 args.psg,
-                "--dry-run",
+                "--json-out",
+                artifacts["edf_check"],
             ],
-            expected_output="stdout contains selected EDF channels, LSL shape, and amplitude summary",
-            failure_policy="Stop NeuroSkill route and ask B line to fix PSG path/channel loading.",
+            expected_output=artifacts["edf_check"],
+            failure_policy="Stop PSG-dependent steps and report the EDF path/read error.",
+        ),
+        "extract_labels": ToolSpec(
+            step="extract_labels",
+            tool="extract_sleep_edf_labels.py",
+            command=[
+                python,
+                str(ROOT / "extract_sleep_edf_labels.py"),
+                "--hypnogram",
+                args.hypnogram or "",
+                "--out",
+                artifacts["truth_labels"],
+            ],
+            expected_output=artifacts["truth_labels"],
+            failure_policy="Stop label-dependent steps and check the matching Hypnogram EDF.",
+        ),
+        "extract_features": ToolSpec(
+            step="extract_features",
+            tool="extract_features.py",
+            command=[
+                python,
+                str(ROOT / "extract_features.py"),
+                "--psg",
+                args.psg,
+                "--out",
+                artifacts["features"],
+            ],
+            expected_output=artifacts["features"],
+            failure_policy="Stop baseline prediction and check EEG channels, sampling rate, and dependencies.",
+        ),
+        "baseline_predict": ToolSpec(
+            step="baseline_predict",
+            tool="mne_baseline.py",
+            command=[
+                python,
+                str(ROOT / "mne_baseline.py"),
+                "--psg",
+                args.psg,
+                "--truth",
+                artifacts["truth_labels"],
+                "--out",
+                artifacts["pred_labels"],
+            ],
+            expected_output=artifacts["pred_labels"],
+            failure_policy="Stop evaluation and inspect the PSG/truth-label inputs.",
         ),
         "check_lsl_discovery": ToolSpec(
             step="check_lsl_discovery",
@@ -249,12 +325,28 @@ def build_tool_registry(args: argparse.Namespace, artifacts: dict[str, str]) -> 
             expected_output=artifacts["neuroskill_lsl_discover"],
             failure_policy="If NeuroSkill sees no LSL stream, write diagnosis and switch later to mne_baseline fallback.",
         ),
-        "evaluate": ToolSpec(
-            step="evaluate",
-            tool="evaluate_sleep_staging.py",
+        "align_predictions": ToolSpec(
+            step="align_predictions",
+            tool="aligned_predictions.py",
             command=[
                 python,
-                str(ROOT / "evaluate_sleep_staging.py"),
+                str(ROOT / "aligned_predictions.py"),
+                "--truth",
+                artifacts["truth_labels"],
+                "--pred",
+                artifacts["pred_labels"],
+                "--out",
+                artifacts["aligned_predictions"],
+            ],
+            expected_output=artifacts["aligned_predictions"],
+            failure_policy="Skip until true_labels.csv and pred_labels.csv both exist.",
+        ),
+        "evaluate": ToolSpec(
+            step="evaluate",
+            tool="evaluate_baseline.py",
+            command=[
+                python,
+                str(ROOT / "evaluate_baseline.py"),
                 "--truth",
                 artifacts["truth_labels"],
                 "--pred",
@@ -275,6 +367,10 @@ def build_tool_registry(args: argparse.Namespace, artifacts: dict[str, str]) -> 
                 artifacts["metrics"],
                 "--state",
                 artifacts["agent_state"],
+                "--neuroskill-status",
+                artifacts["neuroskill_status"],
+                "--lsl-discover",
+                artifacts["lsl_discover"],
                 "--out",
                 artifacts["final_report"],
             ],
@@ -310,7 +406,9 @@ def build_plan(args: argparse.Namespace, run_dir: Path) -> AgentState:
         "neuroskill_lsl_discover": str(run_dir / "neuroskill_lsl_discover.json"),
         "neuroskill_sleep": str(run_dir / "neuroskill_sleep.json"),
         "truth_labels": str(run_dir / "true_labels.csv"),
+        "features": str(run_dir / "features.csv"),
         "pred_labels": str(run_dir / "pred_labels.csv"),
+        "aligned_predictions": str(run_dir / "aligned_predictions.csv"),
         "metrics": str(run_dir / "metrics.json"),
         "final_report": str(run_dir / "final_report.md"),
     }
@@ -321,10 +419,29 @@ def build_plan(args: argparse.Namespace, run_dir: Path) -> AgentState:
     args.backend = task["backend_requested"]
 
     registry = build_tool_registry(args, artifacts)
-    sequence = ["check_edf", "check_lsl_discovery", "evaluate", "generate_report"]
-    if args.backend == "neuroskill_lsl":
-        sequence.insert(2, "check_neuroskill_status")
-        sequence.insert(3, "check_neuroskill_lsl_discover")
+
+    # 输入/输出边界：baseline 从两个 EDF 开始，依次生成 JSON、CSV、指标和报告。
+    # NeuroSkill 路线仍保留现有发现/状态检查，等待 B 线提供正式 sleep 输出转换步骤。
+    if args.backend == "mne_baseline":
+        sequence = [
+            "check_edf",
+            "extract_labels",
+            "extract_features",
+            "baseline_predict",
+            "align_predictions",
+            "evaluate",
+            "generate_report",
+        ]
+    else:
+        sequence = [
+            "check_edf",
+            "check_lsl_discovery",
+            "check_neuroskill_status",
+            "check_neuroskill_lsl_discover",
+            "align_predictions",
+            "evaluate",
+            "generate_report",
+        ]
     plan = [step_from_spec(registry[name]) for name in sequence]
 
     return AgentState(
@@ -376,7 +493,8 @@ def write_step_artifact(state: AgentState, step: Step) -> None:
         "stderr": step.error,
     }
 
-    if step.step == "check_edf":
+    if step.step == "check_edf" and not Path(state.artifacts["edf_check"]).exists():
+        # check_sleep_edf.py 正常情况下会写业务 JSON；仅在脚本提前异常时写诊断包装。
         write_json(Path(state.artifacts["edf_check"]), payload)
     elif step.step == "check_lsl_discovery":
         parsed = parse_json_text(step.output)
@@ -386,30 +504,44 @@ def write_step_artifact(state: AgentState, step: Step) -> None:
 def add_preflight_diagnostics(state: AgentState) -> None:
     """在真正执行前先检查输入文件路径，并把明显问题写入 diagnosis。"""
 
-    psg = Path(state.inputs.get("psg_edf", ""))
+    psg_value = state.inputs.get("psg_edf", "")
     hypnogram_value = state.inputs.get("hypnogram_edf", "")
 
-    if not psg.exists():
+    if not psg_value or not Path(psg_value).is_file():
         add_diagnosis(
             state,
             "error",
             "PSG EDF path does not exist.",
-            str(psg),
+            psg_value or "<empty path>",
             "Replace --psg with a real Sleep-EDF PSG file before executing the EDF/LSL route.",
         )
 
-    if hypnogram_value and not Path(hypnogram_value).exists():
+    if state.backend_effective == "mne_baseline" and (
+        not hypnogram_value or not Path(hypnogram_value).is_file()
+    ):
         add_diagnosis(
             state,
             "warning",
             "Hypnogram EDF path does not exist.",
-            hypnogram_value,
+            hypnogram_value or "<empty path>",
             "Replace --hypnogram with the matching Sleep-EDF Hypnogram before evaluation.",
         )
 
 
 def inspect_step_result(state: AgentState, step: Step) -> None:
     """根据某一步的输出结果判断是否需要追加诊断或触发 fallback。"""
+
+    if step.step == "check_edf":
+        payload = read_json(Path(state.artifacts["edf_check"]))
+        if not payload.get("exists", False) or payload.get("error"):
+            step.status = "failed"
+            add_diagnosis(
+                state,
+                "error",
+                "PSG EDF inspection failed.",
+                str(payload.get("error") or payload),
+                "Check the PSG path and confirm that MNE can read this EDF file.",
+            )
 
     if step.step == "check_lsl_discovery" and step.status == "completed":
         payload = parse_json_text(step.output)
@@ -465,6 +597,66 @@ def inspect_step_result(state: AgentState, step: Step) -> None:
             )
 
 
+def step_status(state: AgentState, step_name: str) -> str | None:
+    """返回指定计划步骤的当前状态；该步骤不在当前 backend 计划中时返回 None。"""
+
+    for item in state.plan:
+        if item.step == step_name:
+            return item.status
+    return None
+
+
+def missing_step_requirements(state: AgentState, step: Step) -> list[str]:
+    """检查某一步运行前必须存在的文件和已完成的上游步骤。
+
+    输入是当前 AgentState 与待执行 Step，输出是缺失条件的可读字符串列表。
+    这样上游失败时下游会被明确标记为 skipped，而不会生成看似成功的空结果。
+    """
+
+    files: dict[str, list[str]] = {
+        "extract_labels": [state.inputs.get("hypnogram_edf", "")],
+        "extract_features": [state.inputs.get("psg_edf", "")],
+        "baseline_predict": [state.inputs.get("psg_edf", ""), state.artifacts["truth_labels"]],
+        "align_predictions": [state.artifacts["truth_labels"], state.artifacts["pred_labels"]],
+        "evaluate": [
+            state.artifacts["truth_labels"],
+            state.artifacts["pred_labels"],
+            state.artifacts["aligned_predictions"],
+        ],
+        "generate_report": [state.artifacts["metrics"]],
+    }
+    upstream: dict[str, list[str]] = {
+        "extract_features": ["check_edf"],
+        "baseline_predict": ["check_edf", "extract_labels"],
+        "align_predictions": ["extract_labels", "baseline_predict"],
+        "evaluate": ["align_predictions"],
+        "generate_report": ["evaluate"],
+    }
+
+    missing: list[str] = []
+    for value in files.get(step.step, []):
+        if not value or not Path(value).is_file():
+            missing.append(value or "<empty path>")
+    for dependency in upstream.get(step.step, []):
+        status = step_status(state, dependency)
+        if status is not None and status != "completed":
+            missing.append(f"step:{dependency}={status}")
+    return missing
+
+
+def provisional_run_status(state: AgentState) -> str:
+    """在 Reporter 启动前计算可写入 agent_state.json 的阶段性运行状态。"""
+
+    statuses = [step.status for step in state.plan if step.step != "generate_report"]
+    if any(status == "failed" for status in statuses):
+        return "failed"
+    if any(status == "skipped" for status in statuses):
+        return "failed"
+    if state.backend_effective != state.backend:
+        return "fallback"
+    return "completed"
+
+
 def execute_plan(state: AgentState, run_dir: Path, execute: bool) -> AgentState:
     """按顺序执行计划中的步骤；如果是 dry-run，则只写计划不运行工具。"""
 
@@ -482,30 +674,29 @@ def execute_plan(state: AgentState, run_dir: Path, execute: bool) -> AgentState:
         return state
 
     for step in state.plan:
-        if step.step == "evaluate":
-            if not Path(state.artifacts["truth_labels"]).exists() or not Path(state.artifacts["pred_labels"]).exists():
-                step.status = "skipped"
-                step.error = "truth_labels.csv or pred_labels.csv missing"
-                add_diagnosis(
-                    state,
-                    "warning",
-                    "Evaluation skipped because labels are missing.",
-                    step.error,
-                    "Generate true_labels.csv and pred_labels.csv, then rerun evaluation.",
-                )
-                continue
-
-        if step.step == "generate_report" and not Path(state.artifacts["metrics"]).exists():
+        missing = missing_step_requirements(state, step)
+        if missing:
             step.status = "skipped"
-            step.error = "metrics.json missing"
+            step.error = "Missing requirements: " + ", ".join(missing)
             add_diagnosis(
                 state,
                 "warning",
-                "Report generation skipped because metrics.json is missing.",
+                f"Step {step.step} skipped because its inputs are not ready.",
                 step.error,
-                "Run evaluation after labels are ready, then generate the final report.",
+                diagnose_next_action(step.step),
             )
             continue
+
+        if step.step == "generate_report":
+            # Reporter 的输入包含 agent_state.json，因此必须在调用 Reporter 前持久化。
+            state.status = provisional_run_status(state)
+            write_json(Path(state.artifacts["agent_state"]), state.to_dict())
+
+        # 同一个 run 目录允许重跑，但当前步骤不能把旧产物误当成本次成功输出。
+        if step.output_path:
+            stale_output = Path(step.output_path)
+            if stale_output.is_file():
+                stale_output.unlink()
 
         step.status = "running"
         code, stdout, stderr = run_command(step.command, cwd=run_dir)
@@ -514,6 +705,9 @@ def execute_plan(state: AgentState, run_dir: Path, execute: bool) -> AgentState:
         step.error = stderr[-4000:]
         step.stdout_summary = summarize_text(stdout)
         step.status = "completed" if code == 0 else "failed"
+        if step.status == "completed" and step.output_path and not Path(step.output_path).is_file():
+            step.status = "failed"
+            step.error = f"Tool exited with code 0 but did not create {step.output_path}"
         write_step_artifact(state, step)
         inspect_step_result(state, step)
 
@@ -525,15 +719,17 @@ def execute_plan(state: AgentState, run_dir: Path, execute: bool) -> AgentState:
                 step.error or step.output,
                 diagnose_next_action(step.step),
             )
-            if step.step in {"check_edf", "check_neuroskill_status", "check_neuroskill_lsl_discover"}:
-                if step.step == "check_edf":
-                    state.backend_effective = "mne_baseline"
-                state.status = "fallback"
-                break
+        # 每一步结束立即保存状态，便于中断后复盘，也保证 Reporter 读取到真实执行记录。
+        write_json(Path(state.artifacts["agent_state"]), state.to_dict())
 
-    if state.status not in {"fallback", "failed"}:
-        failed = any(step.status == "failed" for step in state.plan)
-        state.status = "failed" if failed else "completed"
+    failed = any(step.status == "failed" for step in state.plan)
+    skipped = any(step.status == "skipped" for step in state.plan)
+    if failed or skipped:
+        state.status = "failed"
+    elif state.backend_effective != state.backend:
+        state.status = "fallback"
+    else:
+        state.status = "completed"
     return state
 
 
@@ -542,10 +738,14 @@ def diagnose_next_action(step: str) -> str:
 
     mapping = {
         "check_edf": "Check EDF path, channel names, and whether MNE can read the file.",
+        "extract_labels": "Check the Hypnogram EDF path and its Sleep-EDF annotations.",
+        "extract_features": "Check PSG EEG channels, sampling rate, and MNE/SciPy dependencies.",
+        "baseline_predict": "Check PSG and true_labels.csv before running the baseline.",
         "check_lsl_discovery": "Run the LSL stream script first, then repeat discovery. Check firewall if still empty.",
         "check_neuroskill_status": "Start NeuroSkill daemon/app and verify the port/token configuration.",
         "check_neuroskill_lsl_discover": "Start EDF->LSL stream first. If Python can discover it but NeuroSkill cannot, run LSL parameter sweep.",
-        "evaluate": "Check true_labels.csv and pred_labels.csv format: start_sec,stage.",
+        "align_predictions": "Check true_labels.csv and pred_labels.csv format: start_sec,stage.",
+        "evaluate": "Check aligned_predictions.csv and the evaluator inputs.",
         "generate_report": "Check metrics.json and agent_state.json.",
     }
     return mapping.get(step, "Inspect stdout/stderr and rerun the step manually.")
@@ -567,7 +767,11 @@ def main() -> None:
     parser.add_argument("--execute", action="store_true", help="Actually execute available tool steps.")
     parser.add_argument("--lsl-check-seconds", type=float, default=5.0)
     parser.add_argument("--neuroskill-port", type=int, default=18444)
-    parser.add_argument("--python", default=r"C:\Users\shen\anaconda3\envs\brainfusion\python.exe", help="Python interpreter for subprocess calls (must have mne+pylsl).")
+    parser.add_argument(
+        "--python",
+        default=sys.executable,
+        help="Python interpreter used for tool subprocesses; defaults to the current interpreter.",
+    )
     args = parser.parse_args()
 
     run_dir = Path(args.run_dir) if args.run_dir else PROJECT_ROOT / "outputs" / "runs" / f"run_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
@@ -579,6 +783,8 @@ def main() -> None:
     state = execute_plan(state, run_dir, args.execute)
     write_json(Path(state.artifacts["agent_state"]), state.to_dict())
     print(json.dumps(state.to_dict(), indent=2, ensure_ascii=False))
+    if args.execute and state.status == "failed":
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":
