@@ -221,9 +221,24 @@ def main() -> int:
             "error": {"type": "client_error", "message": str(exc)},
             "attempts": [],
         }
-    write_result(result, args.out)
-    if args.command == "status":
-        write_status_slim(result, args.slim_out)
+    try:
+        write_result(result, args.out)
+        if args.command == "status":
+            write_status_slim(result, args.slim_out)
+    except Exception as exc:
+        # Keep the CLI JSON-only even when an output path is invalid or unwritable.
+        output_error = {
+            "schema_version": "1.0",
+            "command": args.command,
+            "timestamp": now_iso(),
+            "ok": False,
+            "url": getattr(args, "base_url", None),
+            "response": None,
+            "error": {"type": "output_error", "message": str(exc)},
+            "attempts": result.get("attempts", []),
+        }
+        print(json.dumps(output_error, ensure_ascii=False, indent=2))
+        return 1
     return 0 if result["ok"] else 1
 
 
