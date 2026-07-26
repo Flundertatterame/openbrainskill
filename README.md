@@ -53,6 +53,32 @@ python .\work\edf_to_lsl_stream.py --help
 python .\work\evaluate_sleep_staging.py --help
 ```
 
+## LSL 独立工具
+
+`run_lsl_demo.ps1` 会独立启动 EDF 推流、等待数据加载、执行 LSL discover，并把 metadata、state、discover 和日志写入同一个运行目录；推流失败时还会生成 error JSON。默认使用当前环境中的 Python，也可以通过 `-Python` 指定包含 `mne` 和 `pylsl` 的解释器。
+
+```powershell
+.\run_lsl_demo.ps1 -Edf "..\BrainFusion\SleepEDF\SC4001E0-PSG.edf"
+```
+
+Adapter 默认采用 `strict` 通道策略，保留真实 EDF 通道。只有兼容性实验需要把 2 个物理通道映射为 4 个 Muse 标签时，才显式传入 `--channel-policy duplicate`。NPY epoch 数据使用 `--input-layout epochs-samples` 或 source manifest 声明布局；频段特征 CSV 不能作为 EEG 波形推流。
+
+```powershell
+python .\work\edf_to_lsl_stream.py `
+  --edf "..\BrainFusion\SleepEDF\SC4001E0-PSG.edf" `
+  --metadata-json-out .\outputs\runs\lsl_demo\lsl_stream_metadata.json `
+  --state-json-out .\outputs\runs\lsl_demo\lsl_stream_state.json `
+  --error-json-out .\outputs\runs\lsl_demo\lsl_stream_error.json
+
+python .\work\lsl_resolve_check.py `
+  --seconds 5 `
+  --out .\outputs\runs\lsl_demo\lsl_discover.json
+
+python .\work\lsl_param_sweep.py `
+  --edf "..\BrainFusion\SleepEDF\SC4001E0-PSG.edf" `
+  --out .\outputs\runs\day15\lsl_sweep_summary.json
+```
+
 ## 生成 Agent 执行计划
 
 ```powershell

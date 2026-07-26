@@ -62,6 +62,8 @@ def main() -> None:
     parser.add_argument("--edf", default=str(DEFAULT_EDF), help="Path to PSG EDF file.")
     parser.add_argument("--seconds", type=float, default=30, help="Seconds to stream.")
     parser.add_argument("--stream-name", default="E2E_Test", help="LSL stream name for this test.")
+    parser.add_argument("--expected-channels", type=int, default=2,
+                        help="Expected channel count; defaults to strict physical-channel mode.")
     parser.add_argument("--startup-timeout", type=float, default=60,
                         help="Max seconds to wait for the LSL outlet to appear.")
     parser.add_argument("--discover-seconds", type=float, default=5,
@@ -133,7 +135,7 @@ def main() -> None:
     ok = True
     checks = [
         ("type", "EEG"),
-        ("channel_count", 4),
+        ("channel_count", args.expected_channels),
         ("sample_rate", 256.0),
     ]
     for field, expected in checks:
