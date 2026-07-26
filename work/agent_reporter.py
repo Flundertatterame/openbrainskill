@@ -27,18 +27,97 @@ def load_json(path: Path | None) -> dict[str, Any]:
         return {}
     return json.loads(path.read_text(encoding="utf-8"))
 
+def get_artifacts(state: dict[str, Any]) -> dict[str, Any]:
+    return state.get("artifacts",{})
+
 
 def fmt_float(value: Any) -> str:
     if isinstance(value, (float, int)):
         return f"{value:.4f}"
     return "missing"
 
+def get_metric_value(metrics: dict[str, Any], key: str):
+
+    if key == "n_aligned_epochs":
+        return metrics.get(
+            "n_aligned_epochs",
+            metrics.get(
+                "matched_epochs",
+                "missing"
+            )
+        )
+
+    if key == "macro_f1":
+
+        if "macro_f1" in metrics:
+            return metrics["macro_f1"]
+
+        report = metrics.get(
+            "classification_report"
+        )
+
+        if isinstance(report, dict):
+
+            macro_avg = report.get(
+                "macro avg"
+            )
+
+            if isinstance(macro_avg, dict):
+
+                f1 = macro_avg.get(
+                    "f1-score"
+                )
+
+                if isinstance(f1, (int, float)):
+                    return f1
+
+
+        if isinstance(report, list):
+
+            values = []
+
+            for item in report:
+
+                if isinstance(item, dict):
+
+                    f1 = item.get(
+                        "f1-score"
+                    )
+
+                    if isinstance(f1, (int, float)):
+                        values.append(f1)
+
+            if values:
+                return sum(values) / len(values)
+
+        return "missing"
+
+
+    if key == "cohen_kappa":
+
+        return metrics.get(
+            "cohen_kappa",
+            metrics.get(
+                "kappa",
+                metrics.get(
+                    "cohen_kappa_score",
+                    "missing"
+                )
+            )
+        )
+
+
+    return metrics.get(
+        key,
+        "missing"
+    )
+
 
 def explain_metrics(metrics: dict[str, Any]) -> list[str]:
     lines: list[str] = []
-    acc = metrics.get("accuracy")
-    macro_f1 = metrics.get("macro_f1")
-    kappa = metrics.get("cohen_kappa")
+    acc = get_metric_value(metrics,"accuracy")
+    macro_f1 = get_metric_value(metrics,"macro_f1")
+    kappa = get_metric_value(metrics,"cohen_kappa")
 
     lines.append(f"- Accuracy: {fmt_float(acc)}")
     lines.append(f"- Macro-F1: {fmt_float(macro_f1)}")
@@ -49,6 +128,8 @@ def explain_metrics(metrics: dict[str, Any]) -> list[str]:
         lines.append(f"- Accuracy 与 Macro-F1 差值为 {diff:.4f}")
         if diff > 0.15:
             lines.append("- Accuracy 明显高于 Macro-F1，可能存在类别不平衡，不能只参考 Accuracy。")
+        else:
+            lines.append("- Accuracy 与 Macro-F1 差值较小，本报告不据此推断类别分布情况。")
 
     if isinstance(kappa, (float, int)):
         if kappa < 0.4:
@@ -62,15 +143,161 @@ def explain_metrics(metrics: dict[str, Any]) -> list[str]:
 
 
 def render_confusion_matrix(metrics: dict[str, Any]) -> list[str]:
-    matrix = metrics.get("confusion_matrix")
-    if not isinstance(matrix, dict):
-        return ["未找到混淆矩阵。"]
 
-    lines = ["| True \\ Pred | Wake | N1 | N2 | N3 | REM |", "|---|---:|---:|---:|---:|---:|"]
-    for stage in ["0", "1", "2", "3", "4"]:
-        row = matrix.get(stage, {})
-        values = [str(row.get(pred, 0)) for pred in ["0", "1", "2", "3", "4"]]
-        lines.append(f"| {STAGE_NAMES[stage]} | " + " | ".join(values) + " |")
+    matrix = metrics.get(
+        "confusion_matrix"
+    )
+
+
+    if matrix is None:
+        return [
+            "未找到混淆矩阵。"
+        ]
+
+
+    lines=[
+        "| True \\ Pred | Wake | N1 | N2 | N3 | REM |",
+        "|---|---:|---:|---:|---:|---:|"
+    ]
+
+
+    # 旧格式 dict
+
+    if isinstance(matrix,dict):
+
+        for stage in ["0","1","2","3","4"]:
+
+            row=matrix.get(
+                stage,
+                {}
+            )
+
+            values=[
+                str(
+                    row.get(pred,0)
+                )
+                for pred in ["0","1","2","3","4"]
+            ]
+
+            lines.append(
+                f"| {STAGE_NAMES[stage]} | "
+                +
+                " | ".join(values)
+                +
+                " |"
+            )
+
+
+    # 新格式 list
+
+    elif isinstance(matrix,list):
+
+        for idx,row in enumerate(matrix):
+
+            if idx >=5:
+                break
+
+
+            values=[
+                str(x)
+                for x in row
+            ]
+
+
+            while len(values)<5:
+                values.append("0")
+
+
+            lines.append(
+                f"| {STAGE_NAMES[str(idx)]} | "
+                +
+                " | ".join(values[:5])
+                +
+                " |"
+            )
+
+
+    else:
+
+        return [
+            "混淆矩阵格式无法解析。"
+        ]
+
+
+    return lines
+
+def render_classification_report(metrics):
+
+    report = metrics.get(
+        "classification_report"
+    )
+
+    # classification_report 不存在或者为空
+    if not report:
+        return []
+
+    lines = []
+
+    lines.append(
+        "## Classification Report"
+    )
+
+    lines.append("")
+
+    lines.append(
+        "| Stage | Precision | Recall | F1 |"
+    )
+
+    lines.append(
+        "|---|---:|---:|---:|"
+    )
+
+
+    # sklearn 新格式 dict
+    if isinstance(report, dict):
+
+        for stage, item in report.items():
+
+            if isinstance(item, dict):
+
+                lines.append(
+                    f"| {stage} "
+                    f"| {item.get('precision','missing')} "
+                    f"| {item.get('recall','missing')} "
+                    f"| {item.get('f1-score','missing')} |"
+                )
+
+
+    # 旧格式 list
+    elif isinstance(report, list):
+
+        for item in report:
+
+            if isinstance(item, dict):
+
+                lines.append(
+                    f"| {item.get('stage','missing')} "
+                    f"| {item.get('precision','missing')} "
+                    f"| {item.get('recall','missing')} "
+                    f"| {item.get('f1-score','missing')} |"
+                )
+
+    else:
+        return []
+
+
+    return lines
+
+def explain_confusion_pattern(metrics: dict[str,Any])->list[str]:
+    matrix = metrics.get("confusion_matrix")
+    if not isinstance(matrix,dict):
+        return []
+
+    lines=[]
+
+    if "1" in matrix:
+        lines.append("- N1阶段混淆情况需要结合混淆矩阵观察。")
+
     return lines
 
 def explain_diagnosis(diagnosis):
@@ -107,16 +334,24 @@ def explain_diagnosis(diagnosis):
 
     return result[:5]
 
-def build_llm_prompt(metrics: dict[str, Any], state: dict[str, Any], neuroskill: dict[str, Any] = {}) -> str:
+def build_llm_prompt(
+    metrics: dict[str, Any],
+    state: dict[str, Any],
+    neuroskill: dict[str, Any] = {},
+    neuroskill_status: dict[str, Any] = {},
+    lsl_discover: dict[str, Any] | list[Any] = {},
+) -> str:
     prompt = """# 睡眠分期报告生成指令
 
 ## 角色定位
 你是睡眠分期结果报告生成助手，仅基于提供的结构化数据生成自然语言说明，不做算法判断、不补充医学知识、不编造数据。
 
-## 可用输入（仅此三类，禁止使用任何外部知识）
-1. metrics.json：分期评估指标
-2. agent_state.json：Agent执行状态、步骤、诊断信息
-3. neuroskill_sleep.json：NeuroSkill原始分期输出（若缺失则忽略）
+## 可用输入
+1. metrics.json
+2. agent_state.json
+3. neuroskill_sleep.json
+4. neuroskill_status.json
+5. lsl_discover.json
 
 ## 硬性禁止规则
 1. 禁止编造数据中未出现的指标、数值、结论
@@ -143,10 +378,26 @@ def build_llm_prompt(metrics: dict[str, Any], state: dict[str, Any], neuroskill:
         prompt += "```json\n" + json.dumps(neuroskill, ensure_ascii=False, indent=2) + "\n```\n"
     else:
         prompt += "missing（本次运行未提供）\n"
+    
+    prompt += "\n### neuroskill_status.json\n"
+    if neuroskill_status:
+        prompt += "```json\n" + json.dumps(neuroskill_status, ensure_ascii=False, indent=2) + "\n```\n"
+    else:
+        prompt += "missing（本次运行未提供）\n"
+
+
+    prompt += "\n### lsl_discover.json\n"
+    if lsl_discover:
+        prompt += "```json\n" + json.dumps(lsl_discover, ensure_ascii=False, indent=2) + "\n```\n"
+    else:
+        prompt += "missing（本次运行未提供）\n"
+
+
     return prompt
 
-def build_report(metrics: dict[str, Any],state: dict[str, Any],neuroskill_status: dict[str, Any],lsl: dict[str, Any]) -> str:#要添加参数的话记得把下面要调用的地方也改了，比如report = build_report那里
+def build_report(metrics: dict[str, Any],state: dict[str, Any],neuroskill_status: dict[str, Any],lsl: dict[str, Any],neuroskill=None) -> str:#要添加参数的话记得把下面要调用的地方也改了，比如report = build_report那里
     lines: list[str] = []
+    artifacts = get_artifacts(state)
     backend=state.get("backend_effective",state.get("backend"))
     run_status = state.get("status", "missing")
 
@@ -184,7 +435,7 @@ def build_report(metrics: dict[str, Any],state: dict[str, Any],neuroskill_status
     lines.append(f"- Request: {state.get('request', 'missing')}")
     lines.append(f"- Backend: {state.get('backend', 'missing')}")
     lines.append(f"- Status: {state.get('status', 'missing')}")
-    lines.append(f"- Aligned epochs: {metrics.get('n_aligned_epochs', 'missing')}")
+    lines.append(f"- Aligned epochs: {get_metric_value(metrics,'n_aligned_epochs')}")
     lines.append("")
 
     lines.append("## Metrics")
@@ -195,6 +446,9 @@ def build_report(metrics: dict[str, Any],state: dict[str, Any],neuroskill_status
     lines.append("## Confusion Matrix")
     lines.append("")
     lines.extend(render_confusion_matrix(metrics))
+    lines.append("")
+    lines.extend(render_classification_report(metrics))
+    lines.extend(explain_confusion_pattern(metrics))
     lines.append("")
 
     diagnosis = state.get("diagnosis", [])
@@ -232,10 +486,39 @@ def build_report(metrics: dict[str, Any],state: dict[str, Any],neuroskill_status
         
     lines.append("## Referenced Files")
     lines.append("")
-    lines.append("- metrics.json：分期评估指标数据")
-    lines.append("- agent_state.json：Agent 执行状态与诊断信息")
-    lines.append("- neuroskill_sleep.json：预留输入，未提供时为 missing")
+
+    if artifacts:
+
+        for name, path in artifacts.items():
+            lines.append(
+                f"- {name}: `{path}`"
+            )
+
+    else:
+        lines.append("- artifacts: missing")
     lines.append("")
+    lines.append("### Core Evaluation")
+    lines.append("- metrics.json")
+    lines.append("- aligned_predictions.csv")
+    lines.append("")
+
+    lines.append("### Agent State")
+    lines.append("- agent_state.json")
+
+    if neuroskill_status:
+        lines.append("- neuroskill_status.json")
+    else:
+        lines.append("- neuroskill_status.json : missing")
+
+    if lsl:
+        lines.append("- lsl_discover.json")
+    else:
+        lines.append("- lsl_discover.json : missing")
+
+    if neuroskill:
+        lines.append("- neuroskill_sleep.json")
+    else:
+        lines.append("- neuroskill_sleep.json : missing")
     lines.append("## Interpretation")
     lines.append("")
     lines.append("本报告只基于脚本输出的真实 JSON/CSV 结果生成。LLM 可以用于润色表达，但不能新增未出现在结果文件中的指标或结论。")
@@ -244,7 +527,7 @@ def build_report(metrics: dict[str, Any],state: dict[str, Any],neuroskill_status
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Generate a Markdown report from sleep-staging artifacts.")
-    parser.add_argument("--metrics", required=True, help="Path to metrics.json.")
+    parser.add_argument("--metrics",required=False,help="Path to metrics.json (legacy fallback).")
     parser.add_argument("--state", help="Path to agent_state.json.")
     parser.add_argument("--out", required=True, help="Output Markdown path.")
     parser.add_argument("--neuroskill", help="Path to neuroskill_sleep.json (optional)")
@@ -253,20 +536,28 @@ def main() -> None:
     parser.add_argument("--lsl-discover",help="Path to lsl_discover.json")
     args = parser.parse_args()
 
-    metrics = load_json(Path(args.metrics))
     state = load_json(Path(args.state)) if args.state else {}
+
+    artifacts = get_artifacts(state)
+
+    if artifacts.get("metrics"):
+        metrics = load_json(Path(artifacts["metrics"]))
+    elif args.metrics:
+        metrics = load_json(Path(args.metrics))
+    else:
+        metrics = {}
     neuroskill = load_json(Path(args.neuroskill)) if args.neuroskill else {}
     status = load_json(Path(args.neuroskill_status)) \
         if args.neuroskill_status else {}
     lsl = load_json(Path(args.lsl_discover)) \
         if args.lsl_discover else {}
     if args.llm_prompt_out:
-        prompt = build_llm_prompt(metrics, state, neuroskill)
+        prompt = build_llm_prompt(metrics,state,neuroskill,status,lsl)
         prompt_path = Path(args.llm_prompt_out)
         prompt_path.parent.mkdir(parents=True, exist_ok=True)
         prompt_path.write_text(prompt, encoding="utf-8")
         print(f"LLM prompt written to: {prompt_path}")
-    report = build_report(metrics,state,status,lsl)
+    report = build_report(metrics,state,status,lsl,neuroskill)
 
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
