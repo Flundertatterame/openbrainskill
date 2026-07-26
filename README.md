@@ -55,7 +55,7 @@ python .\work\evaluate_sleep_staging.py --help
 
 ## LSL 独立工具
 
-`run_lsl_demo.ps1` 会独立启动 EDF 推流、等待数据加载、执行 LSL discover，并把 metadata、state、error、discover 和日志写入同一个运行目录。默认使用当前环境中的 Python，也可以通过 `-Python` 指定包含 `mne` 和 `pylsl` 的解释器。
+`run_lsl_demo.ps1` 会独立启动 EDF 推流、等待数据加载、执行 LSL discover，并把 metadata、state、discover 和日志写入同一个运行目录；推流失败时还会生成 error JSON。默认使用当前环境中的 Python，也可以通过 `-Python` 指定包含 `mne` 和 `pylsl` 的解释器。
 
 ```powershell
 .\run_lsl_demo.ps1 -Edf "..\BrainFusion\SleepEDF\SC4001E0-PSG.edf"

@@ -88,8 +88,15 @@ def load_edf_data(edf_path: Path, requested_channels: list[str], target_sfreq: f
     raw = mne.io.read_raw_edf(str(edf_path), preload=True, verbose=False)
     available = raw.ch_names
 
-    selected = [ch for ch in requested_channels if ch in available]
-    if not selected:
+    if requested_channels:
+        missing = [ch for ch in requested_channels if ch not in available]
+        if missing:
+            raise ValueError(
+                "Requested EDF channel(s) not found: "
+                f"{', '.join(missing)}. Available channels: {', '.join(available)}"
+            )
+        selected = requested_channels
+    else:
         eeg_like = [ch for ch in available if "EEG" in ch.upper()]
         selected = eeg_like[: min(2, len(eeg_like))] or available[:1]
 
@@ -423,6 +430,7 @@ def run(args: argparse.Namespace) -> None:
     }
     metadata.update(source_detail)
     state["metadata"] = metadata
+    write_json(args.state_json_out, state)
 
     if source_tag == "edf":
         print(f"EDF channels selected: {selected}")
