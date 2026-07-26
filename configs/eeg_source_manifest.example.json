@@ -1,0 +1,12 @@
+{
+  "schema_version": "1.0",
+  "source_kind": "waveform",
+  "path": "data/SC4001E0_epochs.npy",
+  "format": "npy",
+  "layout": "epochs-samples",
+  "shape": [988, 3000],
+  "sample_rate_hz": 100,
+  "epoch_sec": 30,
+  "channel_names": ["EEG Fpz-Cz"],
+  "unit": "microvolts"
+}

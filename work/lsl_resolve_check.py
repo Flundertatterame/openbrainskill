@@ -36,11 +36,20 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Discover local LSL streams.")
     parser.add_argument("--seconds", type=float, default=5.0, help="Discovery duration.")
     parser.add_argument("--type", default="EEG", help="Filter by LSL stream type. Use empty string for all.")
+    parser.add_argument("--out", default="", help="Optional path for the same discovery JSON printed to stdout.")
     args = parser.parse_args()
 
     stream_type = args.type or None
     streams = discover(args.seconds, stream_type)
-    print(json.dumps({"count": len(streams), "streams": streams}, indent=2, ensure_ascii=False))
+    payload = {"count": len(streams), "streams": streams}
+    rendered = json.dumps(payload, indent=2, ensure_ascii=False)
+    print(rendered)
+    if args.out:
+        from pathlib import Path
+
+        out_path = Path(args.out)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(rendered + "\n", encoding="utf-8")
 
 
 if __name__ == "__main__":
