@@ -1,7 +1,7 @@
 {
     "_comment": "Sleep-EDF sample path configuration",
 
-    "data_root": "data",
+    "data_root": "data/raw/sleep-edf/sleep-cassette",
 
     "output_root": "outputs_examples",
 

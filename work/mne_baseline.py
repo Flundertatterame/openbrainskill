@@ -43,6 +43,7 @@ import numpy as np
 import pandas as pd
 import mne
 import subprocess
+import sys
 
 from scipy.signal import welch
 
@@ -393,7 +394,7 @@ def prepare_sample(paths):
 
     truth_path = paths["truth"]
 
-    output_dir = os.path.dirname(truth_path)
+    output_dir = paths["output_dir"]
 
 
     os.makedirs(
@@ -419,7 +420,7 @@ def prepare_sample(paths):
 
 
     cmd = [
-        "python",
+        sys.executable,
         "work/extract_sleep_edf_labels.py",
         "--hypnogram",
         paths["hypnogram"],
@@ -434,7 +435,7 @@ def prepare_sample(paths):
     if result.returncode != 0:
 
         raise RuntimeError(
-            "Generate truth failed"
+            "Failed to generate truth labels"
         )
 
 def main():
@@ -483,7 +484,7 @@ def main():
     # ==========================
     if args.samples or args.samples_json:
 
-        from path_config import resolve_sample_paths, load_config
+        from path_config import resolve_sample_paths
         import json
 
         # 读取样本列表
@@ -521,68 +522,10 @@ def main():
                 args.config
             )
 
-            config = load_config(args.config)
-
-            output_root = config["output_root"]
-
-            output_dir = os.path.join(
-                output_root,
-                sample
-            )
-
-            os.makedirs(
-                output_dir,
-                exist_ok=True
-            )
             prepare_sample(paths)
+            output_dir = paths["output_dir"]
             truth_path = paths["truth"]
 
-
-            # ==========================
-            # 检查 true_labels.csv
-            # ==========================
-
-            if not os.path.exists(truth_path):
-
-                print(
-                    "Missing truth file:",
-                    truth_path
-                )
-
-                print(
-                    "Generating true_labels.csv..."
-                )
-
-
-                hypnogram_path = paths["hypnogram"]
-
-
-                cmd = [
-                    "python",
-                    "work/extract_sleep_edf_labels.py",
-                    "--hypnogram",
-                    hypnogram_path,
-                    "--out",
-                    truth_path
-                ]
-
-
-                result = subprocess.run(cmd)
-
-
-                if result.returncode != 0:
-
-                    raise RuntimeError(
-                        "Failed to generate true_labels.csv"
-                    )
-
-
-            else:
-
-                print(
-                    "Found truth:",
-                    truth_path
-                )
 
             pred_path = os.path.join(
                 output_dir,
