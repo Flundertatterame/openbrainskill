@@ -12,7 +12,7 @@ Output:
 
 Interface:
 
-python work\mne_baseline.py
+python work/mne_baseline.py
 --psg PSG.edf
 --truth true_labels.csv
 --out pred_labels.csv
@@ -42,6 +42,8 @@ import os
 import numpy as np
 import pandas as pd
 import mne
+import subprocess
+import sys
 
 from scipy.signal import welch
 
@@ -151,7 +153,15 @@ def band_power(
     )
 
 
-    total_power=np.sum(psd)
+    valid_idx = (
+        (freqs >= 0.5)
+        &
+        (freqs < 30)
+    )
+
+    total_power = np.sum(
+     psd[valid_idx]
+    )
 
 
     result={}
@@ -193,42 +203,52 @@ def band_power(
 
 def extract_features(
         raw,
-        channel
+        channel,
+        truth
 ):
 
+    sfreq = raw.info["sfreq"]
 
-    sfreq=raw.info["sfreq"]
-
-
-    epoch_samples=int(
-        sfreq*30
+    epoch_samples = int(
+        sfreq * 30
     )
 
-
-    data=raw.get_data(
+    data = raw.get_data(
         picks=[channel]
     )[0]
 
 
-    n_epochs=len(data)//epoch_samples
+    # 使用真实标签中的时间点
+    epoch_times = truth["start_sec"].tolist()
 
 
-    rows=[]
+    rows = []
 
 
-    for epoch in range(n_epochs):
+    for start_sec in epoch_times:
+
+        start_sample = int(
+            start_sec * sfreq
+        )
+
+        end_sample = (
+            start_sample
+            +
+            epoch_samples
+        )
 
 
-        start_sec=epoch*30
-
-
-        segment=data[
-            epoch*epoch_samples:
-            (epoch+1)*epoch_samples
+        segment = data[
+            start_sample:end_sample
         ]
 
 
-        feature=band_power(
+        # 防止最后一个epoch长度不足30秒
+        if len(segment) < epoch_samples:
+            continue
+
+
+        feature = band_power(
             segment,
             sfreq
         )
@@ -236,7 +256,7 @@ def extract_features(
 
         rows.append(
             {
-                "start_sec":start_sec,
+                "start_sec": start_sec,
                 **feature
             }
         )
@@ -252,32 +272,20 @@ def extract_features(
 
 def predict_stage(row):
 
+    delta = row["delta_power"]
+    theta = row["theta_power"]
+    alpha = row["alpha_power"]
+    beta = row["beta_power"]
 
-    delta=row["delta_power"]
-
-    alpha=row["alpha_power"]
-
-    beta=row["beta_power"]
-
-
-    # N3
-
-    if delta>0.5:
-
+    # N3：delta占明显优势
+    if delta > 0.75 and delta > theta:
         return 3
 
-
-
-    # Wake
-
-    if alpha+beta>0.4:
-
+    # Wake：alpha+beta较高
+    if alpha + beta > 0.18:
         return 0
 
-
-
-    # N2
-
+    # 默认N2
     return 2
 
 
@@ -286,95 +294,75 @@ def predict_stage(row):
 # Main
 # ==========================
 
-def main():
+def run_baseline(
+    psg_path,
+    truth_path,
+    out_path
+):
+    """
+    Run baseline prediction for one sample
+    """
 
+    print("Reading truth:")
+    print(truth_path)
 
-    parser=argparse.ArgumentParser(
-        description=
-        "MNE baseline sleep staging"
+    if not os.path.exists(truth_path):
+        raise FileNotFoundError(
+            f"Truth file not found: {truth_path}"
+        )
+
+    truth = pd.read_csv(truth_path)
+
+    print(truth.head())
+
+    print("Epoch count:", len(truth))
+
+    raw = read_psg(
+        psg_path
     )
 
-
-    parser.add_argument(
-        "--psg",
-        required=True
-    )
-
-
-    parser.add_argument(
-        "--truth",
-        required=True
-    )
-
-
-    parser.add_argument(
-        "--out",
-        required=True
-    )
-
-
-    args=parser.parse_args()
-
-
-
-    raw=read_psg(
-        args.psg
-    )
-
-
-    channel=select_eeg(
+    channel = select_eeg(
         raw
     )
-
 
     print(
         "\nExtracting features..."
     )
 
-
-    features=extract_features(
+    features = extract_features(
         raw,
-        channel
+        channel,
+        truth
     )
-
 
     print(
         features.head()
     )
-
 
     print(
         "Epoch number:",
         len(features)
     )
 
-
-
     print(
         "\nPredicting..."
     )
 
-
-    features["stage"]=features.apply(
+    features["stage"] = features.apply(
         predict_stage,
         axis=1
     )
 
-
-
-    pred=features[
+    pred = features[
         [
             "start_sec",
             "stage"
         ]
     ]
 
-
-
-    output_dir=os.path.dirname(
-        args.out
+    output_dir = os.path.dirname(
+        out_path
     )
-
 
     if output_dir:
 
@@ -383,12 +371,10 @@ def main():
             exist_ok=True
         )
 
-
     pred.to_csv(
-        args.out,
+        out_path,
         index=False
     )
-
 
     print(
         "\nPrediction preview:"
@@ -398,9 +384,187 @@ def main():
         pred.head(10)
     )
 
-
     print(
         "\nSaved:",
+        out_path
+    )
+
+
+def prepare_sample(paths):
+
+    truth_path = paths["truth"]
+
+    output_dir = paths["output_dir"]
+
+
+    os.makedirs(
+        output_dir,
+        exist_ok=True
+    )
+
+
+    if os.path.exists(truth_path):
+
+        print(
+            "Truth exists:",
+            truth_path
+        )
+
+        return
+
+
+    print(
+        "Generating truth:",
+        truth_path
+    )
+
+
+    cmd = [
+        sys.executable,
+        "work/extract_sleep_edf_labels.py",
+        "--hypnogram",
+        paths["hypnogram"],
+        "--out",
+        truth_path
+    ]
+
+
+    result = subprocess.run(cmd)
+
+
+    if result.returncode != 0:
+
+        raise RuntimeError(
+            "Failed to generate truth labels"
+        )
+
+def main():
+
+    parser = argparse.ArgumentParser(
+        description="MNE baseline sleep staging"
+    )
+
+    # ---------- 单样本模式 ----------
+    parser.add_argument(
+        "--psg",
+        help="PSG EDF path"
+    )
+
+    parser.add_argument(
+        "--truth",
+        help="Ground truth csv"
+    )
+
+    parser.add_argument(
+        "--out",
+        help="Prediction csv output"
+    )
+
+    # ---------- 批量模式 ----------
+    parser.add_argument(
+        "--samples",
+        help="Example: SC4001E0,SC4002E0"
+    )
+
+    parser.add_argument(
+        "--samples-json",
+        help="JSON file containing sample list"
+    )
+
+    parser.add_argument(
+        "--config",
+        default="sample_path_config.example.json",
+        help="Sample path config"
+    )
+
+    args = parser.parse_args()
+
+    # ==========================
+    # 批量模式
+    # ==========================
+    if args.samples or args.samples_json:
+
+        from path_config import resolve_sample_paths
+        import json
+
+        # 读取样本列表
+        if args.samples:
+
+            sample_list = [
+                s.strip()
+                for s in args.samples.split(",")
+                if s.strip()
+            ]
+
+        else:
+
+            with open(
+                args.samples_json,
+                "r",
+                encoding="utf-8"
+            ) as f:
+
+                sample_list = json.load(f)
+
+                if isinstance(sample_list, dict):
+                    sample_list = sample_list["samples"]
+
+        print("Batch samples:")
+        print(sample_list)
+
+        for sample in sample_list:
+
+            print("=" * 60)
+            print("Processing:", sample)
+
+            paths = resolve_sample_paths(
+                sample,
+                args.config
+            )
+
+            prepare_sample(paths)
+            output_dir = paths["output_dir"]
+            truth_path = paths["truth"]
+
+
+            pred_path = os.path.join(
+                output_dir,
+                "pred_labels.csv"
+            )
+
+            run_baseline(
+                paths["psg"],
+                truth_path,
+                pred_path
+            )
+
+        print("=" * 60)
+        print("Batch finished.")
+
+        return
+
+    # ==========================
+    # 单样本模式（保持以前接口）
+    # ==========================
+
+    if args.psg is None:
+        raise ValueError(
+            "--psg is required in single mode."
+        )
+
+    if args.truth is None:
+        raise ValueError(
+            "--truth is required in single mode."
+        )
+
+    if args.out is None:
+        raise ValueError(
+            "--out is required in single mode."
+        )
+
+    run_baseline(
+        args.psg,
+        args.truth,
         args.out
     )
 

@@ -41,5 +41,5 @@ except Exception as e:
 
 with open(args.json_out, "w", encoding="utf-8") as f:
     json.dump(result, f, indent=4)
-
-print("JSON已保存：", args.json_out)
+print("EDF check completed.")
+print("Saved:", args.json_out)

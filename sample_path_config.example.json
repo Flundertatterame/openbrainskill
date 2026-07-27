@@ -1,6 +1,13 @@
 {
-  "_comment": "将此文件复制为 sample_path_config.json 并修改路径指向实际数据目录。",
-  "data_root": "path/to/your/sleep-edf/data",
-  "psg_suffix": "-PSG.edf",
-  "hypnogram_suffix": "Hypnogram.edf"
+    "_comment": "Sleep-EDF sample path configuration",
+
+    "data_root": "data/raw/sleep-edf/sleep-cassette",
+
+    "output_root": "outputs_examples",
+
+    "psg_suffix": "-PSG.edf",
+
+    "hypnogram_suffix": "Hypnogram.edf",
+
+    "truth_file": "true_labels.csv"
 }
