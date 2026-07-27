@@ -14,7 +14,9 @@
   "status": "planned | running | completed | failed | fallback",
   "inputs": {
     "psg_edf": "string",
-    "hypnogram_edf": "string"
+    "hypnogram_edf": "string",
+    "lsl_source_kind": "edf | from-npy | from-csv",
+    "lsl_source_path": "string"
   },
   "plan": [
     {
@@ -34,6 +36,7 @@
   "artifacts": {
     "agent_plan": "string",
     "agent_state": "string",
+    "parsed_request": "string",
     "edf_check": "string",
     "lsl_discover": "string",
     "lsl_stream_metadata": "string",
@@ -49,6 +52,13 @@
     "aligned_predictions": "string",
     "metrics": "string",
     "final_report": "string"
+  },
+  "runtime": {
+    "lsl_process_pid": "number | absent",
+    "lsl_process_started_at": "UTC ISO-8601 string | absent",
+    "lsl_process_command": ["string"],
+    "lsl_process_exit_code": "number | null | absent",
+    "lsl_process_stopped_at": "UTC ISO-8601 string | absent"
   },
   "next_action": "string",
   "diagnosis": [
