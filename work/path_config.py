@@ -76,6 +76,8 @@ def resolve_sample_paths(sample_id, config_file):
         output_root
         /
         sample_id
+        /
+        "run"
     )
 
 

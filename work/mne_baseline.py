@@ -111,7 +111,31 @@ def read_psg(path):
 # ==========================
 
 def select_eeg(raw):
+    preferred = [
 
+        "EEG Fpz-Cz",
+
+        "EEG Pz-Oz",
+
+        "EEG Fpz-O1",
+
+        "EEG C3-A2",
+
+        "EEG C4-A1"
+
+    ]
+
+
+    for ch in preferred:
+
+        if ch in raw.ch_names:
+
+            print(
+                "Using preferred EEG:",
+                ch
+            )
+
+            return raw.ch_names.index(ch)
 
     picks = mne.pick_types(
         raw.info,
@@ -312,6 +336,26 @@ def run_baseline(
         )
 
     truth = pd.read_csv(truth_path)
+    if len(truth)==0:
+
+        raise ValueError(
+            f"Empty truth labels: {truth_path}"
+        )
+
+
+    required_cols = [
+        "start_sec",
+        "stage"
+    ]
+
+
+    for c in required_cols:
+
+        if c not in truth.columns:
+
+            raise ValueError(
+                f"Missing column {c}"
+            )
 
     print(truth.head())
 
@@ -444,32 +488,40 @@ def main():
         description="MNE baseline sleep staging"
     )
 
+
     # ---------- 单样本模式 ----------
+
     parser.add_argument(
         "--psg",
         help="PSG EDF path"
     )
+
 
     parser.add_argument(
         "--truth",
         help="Ground truth csv"
     )
 
+
     parser.add_argument(
         "--out",
         help="Prediction csv output"
     )
 
+
     # ---------- 批量模式 ----------
+
     parser.add_argument(
         "--samples",
-        help="Example: SC4001E0,SC4002E0"
+        help="Comma separated sample ids"
     )
+
 
     parser.add_argument(
         "--samples-json",
         help="JSON file containing sample list"
     )
+
 
     parser.add_argument(
         "--config",
@@ -477,26 +529,42 @@ def main():
         help="Sample path config"
     )
 
+
     args = parser.parse_args()
 
-    # ==========================
-    # 批量模式
-    # ==========================
+
+
+    # =================================================
+    # Batch mode
+    # =================================================
+
     if args.samples or args.samples_json:
+
 
         from path_config import resolve_sample_paths
         import json
 
-        # 读取样本列表
+
+        # -------------------------
+        # load samples
+        # -------------------------
+
         if args.samples:
 
+
             sample_list = [
+
                 s.strip()
+
                 for s in args.samples.split(",")
+
                 if s.strip()
+
             ]
 
+
         else:
+
 
             with open(
                 args.samples_json,
@@ -504,63 +572,177 @@ def main():
                 encoding="utf-8"
             ) as f:
 
+
                 sample_list = json.load(f)
 
+
                 if isinstance(sample_list, dict):
+
                     sample_list = sample_list["samples"]
 
-        print("Batch samples:")
-        print(sample_list)
+
+
+        print(
+            "Batch samples:"
+        )
+
+        print(
+            sample_list
+        )
+
+
+
+        # -------------------------
+        # process each sample
+        # -------------------------
 
         for sample in sample_list:
 
+
             print("=" * 60)
-            print("Processing:", sample)
 
-            paths = resolve_sample_paths(
-                sample,
-                args.config
+            print(
+                "Processing:",
+                sample
             )
 
-            prepare_sample(paths)
-            output_dir = paths["output_dir"]
-            truth_path = paths["truth"]
+
+            try:
 
 
-            pred_path = os.path.join(
-                output_dir,
-                "pred_labels.csv"
-            )
+                paths = resolve_sample_paths(
+                    sample,
+                    args.config
+                )
 
-            run_baseline(
-                paths["psg"],
-                truth_path,
-                pred_path
-            )
+
+
+                # =====================
+                # check PSG
+                # =====================
+
+                if not os.path.exists(
+                    paths["psg"]
+                ):
+
+                    raise FileNotFoundError(
+                        f"PSG missing: {paths['psg']}"
+                    )
+
+
+
+                # =====================
+                # prepare truth
+                # only here
+                # =====================
+
+                prepare_sample(
+                    paths
+                )
+
+
+
+                truth_path = paths["truth"]
+
+
+
+                if not os.path.exists(
+                    truth_path
+                ):
+
+                    raise FileNotFoundError(
+                        f"Truth missing after prepare_sample: {truth_path}"
+                    )
+
+
+
+                # =====================
+                # output path
+                # =====================
+
+                output_dir = paths["output_dir"]
+
+
+                os.makedirs(
+                    output_dir,
+                    exist_ok=True
+                )
+
+
+
+                pred_path = os.path.join(
+                    output_dir,
+                    "pred_labels.csv"
+                )
+
+
+
+                # =====================
+                # baseline prediction
+                # =====================
+
+                run_baseline(
+                    paths["psg"],
+                    truth_path,
+                    pred_path
+                )
+
+
+                print(
+                    "Finished:",
+                    sample
+                )
+
+
+            except Exception as e:
+
+
+                print(
+                    f"Skip {sample}: {e}"
+                )
+
+
+                continue
+
+
 
         print("=" * 60)
-        print("Batch finished.")
+
+        print(
+            "Batch finished."
+        )
+
 
         return
 
-    # ==========================
-    # 单样本模式（保持以前接口）
-    # ==========================
+
+
+    # =================================================
+    # Single mode
+    # =================================================
+
 
     if args.psg is None:
+
         raise ValueError(
             "--psg is required in single mode."
         )
 
+
     if args.truth is None:
+
         raise ValueError(
             "--truth is required in single mode."
         )
 
+
     if args.out is None:
+
         raise ValueError(
             "--out is required in single mode."
         )
+
+
 
     run_baseline(
         args.psg,

@@ -302,13 +302,28 @@ def extract_features(
 
 def main():
 
+    parser = argparse.ArgumentParser(
+        description="Data Loader v1"
+    )
 
-    parser=argparse.ArgumentParser()
 
+    # =========================
+    # single sample
+    # =========================
 
     parser.add_argument(
         "--sample",
-        required=True
+        help="Single sample id"
+    )
+
+
+    # =========================
+    # batch samples
+    # =========================
+
+    parser.add_argument(
+        "--samples",
+        help="Comma separated sample ids"
     )
 
 
@@ -318,92 +333,238 @@ def main():
     )
 
 
-    args=parser.parse_args()
+    args = parser.parse_args()
 
 
 
-    paths=resolve_sample_paths(
-        args.sample,
-        args.config
-    )
+    # =========================
+    # 解析样本列表
+    # =========================
+
+    if args.samples:
 
 
+        sample_list = [
 
-    config=load_config(
-        args.config
-    )
+            s.strip()
+
+            for s in args.samples.split(",")
+
+            if s.strip()
+
+        ]
 
 
-    run_dir=(
+    elif args.sample:
 
-        Path(
-            config["output_root"]
+
+        sample_list = [
+
+            args.sample
+
+        ]
+
+
+    else:
+
+        raise ValueError(
+            "Please provide --sample or --samples"
         )
-
-        /
-        args.sample
-
-        /
-        "run"
-
-    )
-
-
-    run_dir.mkdir(
-        parents=True,
-        exist_ok=True
-    )
-
-
-
-    # 1 truth
-
-    prepare_truth(paths)
-
-
-
-    # copy truth into run
-
-    truth_out = run_dir / "true_labels.csv"
-
-
-    pd.read_csv(
-        paths["truth"]
-    ).to_csv(
-        truth_out,
-        index=False
-    )
-
-
-
-    # 2 edf check
-
-    check_edf(
-
-        paths["psg"],
-
-        run_dir / "edf_check.json"
-
-    )
-
-
-
-    # 3 features
-
-    extract_features(
-
-        paths["psg"],
-
-        paths["truth"],
-
-        run_dir / "features.csv"
-
-    )
 
 
     print(
-        "Data Loader finished"
+        "Samples:"
     )
+
+    print(
+        sample_list
+    )
+
+
+
+    # =========================
+    # 批量处理
+    # =========================
+
+    for sample in sample_list:
+
+
+        print("="*60)
+
+        print(
+            "Processing:",
+            sample
+        )
+
+
+        try:
+
+
+            paths = resolve_sample_paths(
+                sample,
+                args.config
+            )
+
+
+
+            # -------------------------
+            # 检查 PSG / Hypnogram
+            # -------------------------
+
+            if not os.path.exists(
+                paths["psg"]
+            ):
+
+                raise FileNotFoundError(
+                    f"PSG missing: {paths['psg']}"
+                )
+
+
+            if not os.path.exists(
+                paths["hypnogram"]
+            ):
+
+                raise FileNotFoundError(
+                    f"Hypnogram missing: {paths['hypnogram']}"
+                )
+
+
+
+            config = load_config(
+                args.config
+            )
+
+
+
+            run_dir = (
+
+                Path(
+                    config["output_root"]
+                )
+
+                /
+
+                sample
+
+                /
+
+                "run"
+
+            )
+
+
+            run_dir.mkdir(
+                parents=True,
+                exist_ok=True
+            )
+
+
+
+            # =====================
+            # 1. true_labels.csv
+            # =====================
+
+            prepare_truth(
+                paths
+            )
+
+
+            truth_out = (
+
+                run_dir
+
+                /
+
+                "true_labels.csv"
+
+            )
+
+
+            pd.read_csv(
+                paths["truth"]
+            ).to_csv(
+                truth_out,
+                index=False
+            )
+
+
+            print(
+                "Saved:",
+                truth_out
+            )
+
+
+
+            # =====================
+            # 2. edf_check.json
+            # =====================
+
+            check_edf(
+
+                paths["psg"],
+
+                run_dir /
+
+                "edf_check.json"
+
+            )
+
+
+            print(
+                "Saved:",
+                run_dir /
+                "edf_check.json"
+            )
+
+
+
+            # =====================
+            # 3. features.csv
+            # =====================
+
+            extract_features(
+
+                paths["psg"],
+
+                paths["truth"],
+
+                run_dir /
+
+                "features.csv"
+
+            )
+
+
+
+            print(
+                "Finished:",
+                sample
+            )
+
+
+        except Exception as e:
+
+
+            print(
+                f"Skip {sample}: {e}"
+            )
+
+
+            continue
+
+
+
+    print("="*60)
+
+    print(
+        "Batch Data Loader finished"
+    )
+
+
+
+if __name__=="__main__":
+
+    main()
 
 
 if __name__=="__main__":
