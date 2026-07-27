@@ -6,7 +6,9 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import math
 import sys
+from collections import Counter
 from pathlib import Path
 from typing import Any
 
@@ -47,30 +49,73 @@ def find_epochs(value: Any) -> list[Any] | None:
 def normalize_stage(value: Any) -> int:
     if isinstance(value, bool):
         raise ValueError("boolean is not a sleep stage")
-    if isinstance(value, (int, float)) and int(value) in range(5):
-        return int(value)
+    if isinstance(value, (int, float)):
+        numeric = int(value)
+        if numeric == 5:
+            return 4
+        if numeric in range(5):
+            return numeric
     key = str(value).strip().upper().replace("SLEEP STAGE ", "").replace("STAGE ", "")
     if key in STAGE_MAP:
         return STAGE_MAP[key]
     raise ValueError(f"unsupported sleep stage: {value!r}")
 
 
+def pick_stage(values: list[int]) -> int:
+    counts = Counter(values)
+    best_count = max(counts.values())
+    return min(stage for stage, count in counts.items() if count == best_count)
+
+
+def to_float(value: Any, *, name: str) -> float:
+    try:
+        return float(value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"{name} is not numeric: {value!r}") from exc
+
+
 def convert(payload: Any, epoch_sec: float) -> list[dict[str, Any]]:
     epochs = find_epochs(payload)
     if epochs is None:
         raise ValueError("input JSON does not contain an epochs[] array")
-    rows = []
+
+    inferred_epoch = None
+    if isinstance(payload, dict):
+        inferred_epoch = payload.get("epoch_secs", payload.get("epoch_sec"))
+    if inferred_epoch is not None:
+        epoch_sec = to_float(inferred_epoch, name="epoch_secs")
+
+    utc_rows: dict[float, list[int]] = {}
+    sequential_rows = []
     for index, epoch in enumerate(epochs):
         if isinstance(epoch, dict):
             stage_value = next((epoch[key] for key in ("stage", "label", "predicted_stage", "prediction") if key in epoch), None)
             if stage_value is None:
                 raise ValueError(f"epoch {index} has no stage field")
+            stage = normalize_stage(stage_value)
+            if "utc" in epoch:
+                utc = to_float(epoch["utc"], name="utc")
+                utc_rows.setdefault(utc, []).append(stage)
+                continue
             start_sec = next((epoch[key] for key in ("start_sec", "start", "time_sec", "timestamp_sec") if key in epoch), index * epoch_sec)
         else:
-            stage_value = epoch
+            stage = normalize_stage(epoch)
             start_sec = index * epoch_sec
-        rows.append({"start_sec": float(start_sec), "stage": normalize_stage(stage_value)})
-    return rows
+        sequential_rows.append({"start_sec": float(start_sec), "stage": stage})
+
+    if utc_rows:
+        base_utc = min(utc_rows)
+        buckets: dict[int, list[int]] = {}
+        for utc, stages in sorted(utc_rows.items()):
+            second_stage = pick_stage(stages)
+            bucket = int(math.floor((utc - base_utc) / 30.0))
+            buckets.setdefault(bucket, []).append(second_stage)
+        return [
+            {"start_sec": float(bucket * 30), "stage": pick_stage(stages)}
+            for bucket, stages in sorted(buckets.items())
+        ]
+
+    return sequential_rows
 
 
 def main() -> int:
