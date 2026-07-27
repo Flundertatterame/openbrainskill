@@ -540,12 +540,18 @@ def main() -> None:
 
     artifacts = get_artifacts(state)
 
-    if artifacts.get("metrics"):
-        metrics = load_json(Path(artifacts["metrics"]))
-    elif args.metrics:
+    metrics = {}
+
+    metrics_path = artifacts.get("metrics")
+
+    if metrics_path:
+        metrics_file = Path(metrics_path)
+        if metrics_file.exists():
+            metrics = load_json(metrics_file)
+
+    if not metrics and args.metrics:
         metrics = load_json(Path(args.metrics))
-    else:
-        metrics = {}
+        
     neuroskill = load_json(Path(args.neuroskill)) if args.neuroskill else {}
     status = load_json(Path(args.neuroskill_status)) \
         if args.neuroskill_status else {}
