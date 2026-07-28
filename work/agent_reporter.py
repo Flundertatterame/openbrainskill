@@ -398,15 +398,18 @@ def build_llm_prompt(
 def build_report(metrics: dict[str, Any],state: dict[str, Any],neuroskill_status: dict[str, Any],lsl: dict[str, Any],neuroskill=None) -> str:#要添加参数的话记得把下面要调用的地方也改了，比如report = build_report那里
     lines: list[str] = []
     artifacts = get_artifacts(state)
-    backend=state.get("backend_effective",state.get("backend"))
+    backend = state.get("backend")
+    backend_effective = state.get("backend_effective",backend)
     run_status = state.get("status", "missing")
 
-    if backend=="mne_baseline":
-        title="# Fallback Sleep Report"
+    if (backend != "mne_baseline" and backend_effective == "mne_baseline"):
+        title = "# Fallback Sleep Report"
+
     elif run_status == "failed":
-        title="# Failure Report"
+        title = "# Failure Report"
+
     else:
-        title="# Sleep Staging Report"
+        title = "# Sleep Staging Report"
 
     lines.append(title)
     lines.append("")
@@ -539,18 +542,14 @@ def main() -> None:
     state = load_json(Path(args.state)) if args.state else {}
 
     artifacts = get_artifacts(state)
-
-    metrics = {}
-
     metrics_path = artifacts.get("metrics")
 
-    if metrics_path:
-        metrics_file = Path(metrics_path)
-        if metrics_file.exists():
-            metrics = load_json(metrics_file)
-
-    if not metrics and args.metrics:
+    if args.metrics:
         metrics = load_json(Path(args.metrics))
+    elif metrics_path:
+        metrics = load_json(Path(metrics_path))
+    else:
+        metrics = {}
         
     neuroskill = load_json(Path(args.neuroskill)) if args.neuroskill else {}
     status = load_json(Path(args.neuroskill_status)) \
