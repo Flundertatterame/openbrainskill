@@ -14,6 +14,7 @@ import sys
 import time
 import urllib.error
 import urllib.request
+from collections.abc import Mapping
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -23,11 +24,35 @@ def now_iso() -> str:
     return datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds")
 
 
-def json_value(value: str) -> Any:
+def default_token() -> str | None:
+    token = os.getenv("NEUROSKILL_TOKEN")
+    if token:
+        return token
+    appdata = os.getenv("APPDATA")
+    if not appdata:
+        return None
+    token_path = Path(appdata) / "skill" / "daemon" / "auth.token"
     try:
-        return json.loads(value)
+        value = token_path.read_text(encoding="utf-8").strip()
+    except OSError:
+        return None
+    return value or None
+
+
+def load_payload(args: argparse.Namespace) -> Any:
+    if args.payload and args.payload_file:
+        raise ValueError("--payload and --payload-file cannot be used together")
+    raw = None
+    if args.payload_file:
+        raw = Path(args.payload_file).read_text(encoding="utf-8")
+    elif args.payload is not None:
+        raw = args.payload
+    if raw is None:
+        return None
+    try:
+        return json.loads(raw)
     except json.JSONDecodeError as exc:
-        raise argparse.ArgumentTypeError(f"invalid JSON: {exc.msg}") from exc
+        raise ValueError(f"invalid JSON payload: {exc.msg}") from exc
 
 
 def request_json(
@@ -55,8 +80,11 @@ def request_json(
                 parsed = json.loads(raw) if raw else None
             except json.JSONDecodeError:
                 parsed = raw
+            response_ok = 200 <= response.status < 300
+            if isinstance(parsed, Mapping) and "ok" in parsed:
+                response_ok = response_ok and bool(parsed["ok"])
             return {
-                "ok": 200 <= response.status < 300,
+                "ok": response_ok,
                 "method": method,
                 "url": url,
                 "http_status": response.status,
@@ -130,7 +158,7 @@ def command_specs(args: argparse.Namespace) -> list[tuple[str, str, Any]]:
         return [("POST", "/v1/sleep", body), ("POST", "/sleep", body), ("POST", "/", {"command": "sleep", **body})]
     if args.command == "connect":
         body = args.payload if args.payload is not None else {}
-        return [("POST", "/v1/lsl/connect", body), ("POST", "/lsl/connect", body), ("POST", "/", {"command": "connect", **body})]
+        return [("POST", "/v1/cmd", {"command": "start_session", **body}), ("POST", "/", {"command": "connect", **body})]
     if args.command == "session":
         body = args.payload if args.payload is not None else {}
         return [("POST", "/v1/session", body), ("POST", "/session", body), ("POST", "/", {"command": "session", **body})]
@@ -187,10 +215,11 @@ def add_common(parser: argparse.ArgumentParser, *, payload: bool = False) -> Non
     parser.add_argument("--port", type=int, default=18444, help="NeuroSkill daemon port (default: 18444)")
     parser.add_argument("--host", default="127.0.0.1", help="NeuroSkill daemon host")
     parser.add_argument("--timeout", type=float, default=3.0, help="request timeout in seconds")
-    parser.add_argument("--token", default=os.getenv("NEUROSKILL_TOKEN"), help="Bearer token; defaults to NEUROSKILL_TOKEN")
+    parser.add_argument("--token", default=default_token(), help="Bearer token; defaults to NEUROSKILL_TOKEN or %APPDATA%\\skill\\daemon\\auth.token")
     parser.add_argument("--out", help="path to output JSON")
     if payload:
-        parser.add_argument("--payload", type=json_value, help="JSON request object")
+        parser.add_argument("--payload", help="JSON request object")
+        parser.add_argument("--payload-file", help="path to a JSON request object")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -206,24 +235,40 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main() -> int:
-    args = build_parser().parse_args()
-    args.base_url = f"http://{args.host}:{args.port}"
     try:
+        args = build_parser().parse_args()
+        args.base_url = f"http://{args.host}:{args.port}"
+        args.payload = load_payload(args)
         result = try_endpoints(args, command_specs(args))
     except Exception as exc:  # Last-resort JSON boundary for automation callers.
         result = {
             "schema_version": "1.0",
-            "command": args.command,
+            "command": getattr(locals().get("args"), "command", None),
             "timestamp": now_iso(),
             "ok": False,
-            "url": args.base_url,
+            "url": getattr(locals().get("args"), "base_url", None),
             "response": None,
             "error": {"type": "client_error", "message": str(exc)},
             "attempts": [],
         }
-    write_result(result, args.out)
-    if args.command == "status":
-        write_status_slim(result, args.slim_out)
+    try:
+        write_result(result, args.out)
+        if args.command == "status":
+            write_status_slim(result, args.slim_out)
+    except Exception as exc:
+        # Keep the CLI JSON-only even when an output path is invalid or unwritable.
+        output_error = {
+            "schema_version": "1.0",
+            "command": args.command,
+            "timestamp": now_iso(),
+            "ok": False,
+            "url": getattr(args, "base_url", None),
+            "response": None,
+            "error": {"type": "output_error", "message": str(exc)},
+            "attempts": result.get("attempts", []),
+        }
+        print(json.dumps(output_error, ensure_ascii=False, indent=2))
+        return 1
     return 0 if result["ok"] else 1
 
 

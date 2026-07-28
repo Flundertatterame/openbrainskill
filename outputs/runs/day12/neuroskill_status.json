@@ -1,0 +1,38 @@
+{
+  "schema_version": "1.0",
+  "command": "status",
+  "timestamp": "2026-07-26T01:45:15+08:00",
+  "ok": false,
+  "url": "http://127.0.0.1:18444/",
+  "response": null,
+  "error": {
+    "type": "timeout",
+    "message": "timed out"
+  },
+  "attempts": [
+    {
+      "ok": false,
+      "method": "GET",
+      "url": "http://127.0.0.1:18444/v1/status",
+      "http_status": null,
+      "elapsed_ms": 221.1,
+      "response": null,
+      "error": {
+        "type": "timeout",
+        "message": "timed out"
+      }
+    },
+    {
+      "ok": false,
+      "method": "POST",
+      "url": "http://127.0.0.1:18444/",
+      "http_status": null,
+      "elapsed_ms": 201.4,
+      "response": null,
+      "error": {
+        "type": "timeout",
+        "message": "timed out"
+      }
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+﻿NeuroSkill demo started: 2026-07-26T01:45:14.9758432+08:00
+status exit_code=1
+lsl-discover exit_code=1
+sleep exit_code=1
+conversion skipped because NeuroSkill sleep failed

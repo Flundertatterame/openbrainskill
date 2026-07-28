@@ -1,0 +1,38 @@
+{
+  "schema_version": "1.0",
+  "command": "lsl-discover",
+  "timestamp": "2026-07-26T01:45:16+08:00",
+  "ok": false,
+  "url": "http://127.0.0.1:18444/lsl/discover",
+  "response": null,
+  "error": {
+    "type": "timeout",
+    "message": "timed out"
+  },
+  "attempts": [
+    {
+      "ok": false,
+      "method": "GET",
+      "url": "http://127.0.0.1:18444/v1/lsl/discover",
+      "http_status": null,
+      "elapsed_ms": 227.9,
+      "response": null,
+      "error": {
+        "type": "timeout",
+        "message": "timed out"
+      }
+    },
+    {
+      "ok": false,
+      "method": "GET",
+      "url": "http://127.0.0.1:18444/lsl/discover",
+      "http_status": null,
+      "elapsed_ms": 201.6,
+      "response": null,
+      "error": {
+        "type": "timeout",
+        "message": "timed out"
+      }
+    }
+  ]
+}

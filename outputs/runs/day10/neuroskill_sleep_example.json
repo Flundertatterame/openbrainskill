@@ -1,0 +1,11 @@
+{
+  "example_fixture": true,
+  "description": "Synthetic fixture used only to verify epochs-to-CSV conversion when the local NeuroSkill daemon is unavailable.",
+  "epochs": [
+    {"start_sec": 0, "stage": "W"},
+    {"start_sec": 30, "stage": "N1"},
+    {"start_sec": 60, "stage": "N2"},
+    {"start_sec": 90, "stage": "N3"},
+    {"start_sec": 120, "stage": "REM"}
+  ]
+}

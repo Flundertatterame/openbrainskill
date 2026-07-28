@@ -1,0 +1,50 @@
+{
+  "schema_version": "1.0",
+  "command": "sleep",
+  "timestamp": "2026-07-25T17:52:06+08:00",
+  "ok": false,
+  "url": "http://127.0.0.1:18444/",
+  "response": null,
+  "error": {
+    "type": "timeout",
+    "message": "timed out"
+  },
+  "attempts": [
+    {
+      "ok": false,
+      "method": "POST",
+      "url": "http://127.0.0.1:18444/v1/sleep",
+      "http_status": null,
+      "elapsed_ms": 224.2,
+      "response": null,
+      "error": {
+        "type": "timeout",
+        "message": "timed out"
+      }
+    },
+    {
+      "ok": false,
+      "method": "POST",
+      "url": "http://127.0.0.1:18444/sleep",
+      "http_status": null,
+      "elapsed_ms": 218.3,
+      "response": null,
+      "error": {
+        "type": "timeout",
+        "message": "timed out"
+      }
+    },
+    {
+      "ok": false,
+      "method": "POST",
+      "url": "http://127.0.0.1:18444/",
+      "http_status": null,
+      "elapsed_ms": 213.4,
+      "response": null,
+      "error": {
+        "type": "timeout",
+        "message": "timed out"
+      }
+    }
+  ]
+}
